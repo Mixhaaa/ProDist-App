@@ -1,12 +1,18 @@
 # 🌿 ProbDist Pro — Calculadora & Formulario de Distribuciones de Probabilidad (Terra Edition)
 
-[https://img.shields.io/badge/versi%C3%B3n-5.9.1_Pro-2e6f40]
-[https://img.shields.io/badge/distribuciones-18_modelos-3d8c52]
-[https://img.shields.io/badge/precisi%C3%B3n-IEEE_754-d97706]
-[https://img.shields.io/badge/idioma-Espa%C3%B1ol_%7C_English-1b291e]
-[https://img.shields.io/badge/licencia-MIT-blue]
+<p align="center"><img src="icons/icon-192.png" width="96" alt="Icono de ProbDist Pro" /></p>
 
-**ProbDist Pro (Terra Edition)** es una aplicación móvil e interactiva diseñada para el cálculo exacto, la visualización gráfica y la enseñanza de **18 distribuciones de probabilidad** (discretas y continuas) en cursos de estadística de colegio, universidad e ingeniería.
+[![Abrir app](https://img.shields.io/badge/▶_Abrir_app-en_el_navegador-2e6f40?style=for-the-badge)](https://mixhaaa.github.io/ProDist-App/)
+[![Descargar APK](https://img.shields.io/badge/⬇_Descargar-APK_Android-3d8c52?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Mixhaaa/ProDist-App/releases/latest/download/ProbDist-Pro.apk)
+
+![versión](https://img.shields.io/badge/versi%C3%B3n-5.9.1_Pro-2e6f40)
+![distribuciones](https://img.shields.io/badge/distribuciones-18_modelos-3d8c52)
+![precisión](https://img.shields.io/badge/precisi%C3%B3n-IEEE_754-d97706)
+![idioma](https://img.shields.io/badge/idioma-Espa%C3%B1ol_%7C_English-1b291e)
+![licencia](https://img.shields.io/badge/licencia-MIT-blue)
+[![Android APK](https://github.com/Mixhaaa/ProDist-App/actions/workflows/android-apk.yml/badge.svg)](https://github.com/Mixhaaa/ProDist-App/actions/workflows/android-apk.yml)
+
+**ProbDist Pro (Terra Edition)** es una aplicación web y Android interactiva diseñada para el cálculo exacto, la visualización gráfica y la enseñanza de **18 distribuciones de probabilidad** (discretas y continuas) en cursos de estadística de colegio, universidad e ingeniería.
 
 Inspirada en los applets estadísticos de [Matthew Bognar, Ph.D. (University of Iowa)](https://mabognar.github.io/apps/) y fundamentada en las recomendaciones pedagógicas [GAISE de la American Statistical Association](https://www.amstat.org/docs/default-source/amstat-documents/gaisecollege_full.pdf), la aplicación combina un motor numérico de alta precisión en tiempo real con el sistema de diseño orgánico **Terra Natural / Terra Nocturno** creado en [Google Stitch](https://stitch.withgoogle.com/).
 
@@ -56,18 +62,74 @@ El núcleo matemático está escrito en JavaScript puro bajo precisión de doble
 
 * **Función Log-Gamma de Lanczos ($\ln\Gamma(z)$)**: Aproximación de 9 términos con reflexión de Euler para evaluar factoriales y combinatorias $\binom{n}{x} = \exp(\ln\Gamma(n+1) - \ln\Gamma(x+1) - \ln\Gamma(n-x+1))$ sin desbordamiento numérico incluso para tamaños de muestra grandes ($n = 200$).
 * **Funciones Especiales Regularizadas**: Evaluación de la función Gamma incompleta inferior $P(a, x)$ mediante desarrollo en serie y fracciones continuas de Lentz (para **Gamma** y **Chi-Cuadrada**), y de la función Beta incompleta regularizada $I_x(a, b)$ (para **Beta**, **t de Student** y **F de Snedecor**).
+* **Normal Estándar $\Phi(z)$**: Calculada a partir de la función Gamma incompleta ($\text{erf}(x) = P(\tfrac12, x^2)$), con precisión de ~$10^{-15}$ incluso en las colas extremas.
 * **Cuantiles Inversos ($F^{-1}(p)$)**: Aproximación racional de Acklam para la inversa de la Normal estándar $\Phi^{-1}(p)$ combinada con bisección monótona de alta precisión ($10^{-9}$) para distribuciones continuas y búsqueda acumulada exacta para modelos discretos.
 
-## 🚀 Instalación y Despliegue
+## 🚀 Cómo usar la app
 
-### 1. Ejecución Directa en Navegador o GitHub Pages
+### 📱 Opción 1 — Instalar el APK en Android
 
-La aplicación está empaquetada en un único archivo autónomo (`probdist_stitch_terra_app.html`), por lo que no requiere pasos de compilación:
+1. Desde el celular, descarga **[ProbDist-Pro.apk](https://github.com/Mixhaaa/ProDist-App/releases/latest/download/ProbDist-Pro.apk)** (también está en la sección [Releases](https://github.com/Mixhaaa/ProDist-App/releases)).
+2. Abre el archivo descargado. Android te pedirá permitir **"Instalar apps desconocidas"** para tu navegador o gestor de archivos: acéptalo.
+3. Toca **Instalar**. La app aparecerá en tu menú como **ProbDist Pro** y funciona **sin internet**.
+
+> El APK se genera automáticamente con **GitHub Actions** cada vez que se sube un cambio a `main` (ver [`.github/workflows/android-apk.yml`](.github/workflows/android-apk.yml)). Está firmado con una clave de depuración: sirve para instalar y compartir, pero no para publicar en Google Play.
+
+### 🌐 Opción 2 — Usarla en el navegador (GitHub Pages)
+
+Abre **https://mixhaaa.github.io/ProDist-App/** desde cualquier computadora o celular.
+En Chrome para Android también puedes tocar **⋮ → Agregar a la pantalla principal / Instalar app**: queda como una app más y funciona sin conexión.
+
+### 💻 Opción 3 — Ejecutarla en tu computadora
+
+Es un sitio estático: basta con abrir `index.html` en el navegador. Para probar también el modo sin conexión, sírvela con un servidor local:
 
 ```bash
-# Clonar el repositorio
-git clone [https://github.com/tu-usuario/probdist-pro-terra.git](https://github.com/tu-usuario/probdist-pro-terra.git)
-cd probdist-pro-terra
+git clone https://github.com/Mixhaaa/ProDist-App.git
+cd ProDist-App
+python3 -m http.server 8080   # luego abre http://localhost:8080
+```
 
-# Renombrar a index.html si deseas publicarlo directamente en GitHub Pages
-cp probdist_stitch_terra_app.html index.html
+## 🗂️ Estructura del Proyecto
+
+```text
+ProDist-App/
+├── index.html                  # La app completa (HTML + CSS + motor numérico en JavaScript)
+├── manifest.webmanifest        # Datos para instalarla como app (nombre, iconos, colores)
+├── sw.js                       # Service worker: guarda la app para usarla sin internet
+├── icons/                      # Iconos de la app web
+├── vendor/katex/               # KaTeX incluido localmente (fórmulas LaTeX sin conexión)
+├── assets/                     # Icono y pantalla de inicio para generar los recursos Android
+├── capacitor.config.json       # Configuración de Capacitor (empaqueta la web como app Android)
+├── package.json                # Dependencias y scripts para compilar el APK
+├── scripts/build-web.mjs       # Copia los archivos web a www/ antes de empaquetar
+└── .github/workflows/
+    └── android-apk.yml         # Compila el APK y lo publica en Releases
+```
+
+## 🔧 Compilar el APK manualmente (opcional)
+
+Solo si quieres compilarlo en tu PC en lugar de usar GitHub Actions. Requiere **Node.js 22+**, **JDK 21** y **Android Studio** (Android SDK 36).
+
+```bash
+npm install
+npm run android:add      # genera la carpeta android/
+npm run android:icons    # crea iconos y pantalla de inicio a partir de assets/
+cd android && ./gradlew assembleDebug
+# APK resultante: android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Después de modificar `index.html`, ejecuta `npm run android:sync` para actualizar la app Android.
+
+## 📚 Referencias
+
+* Bognar, M. — [Statistical applets, University of Iowa](https://mabognar.github.io/apps/).
+* American Statistical Association — [GAISE College Report](https://www.amstat.org/docs/default-source/amstat-documents/gaisecollege_full.pdf).
+* Press, W. H. et al. — *Numerical Recipes*, 3.ª ed. (funciones Gamma y Beta incompletas, fracciones continuas de Lentz).
+* Acklam, P. J. — Algoritmo para la inversa de la distribución Normal.
+
+## 📄 Licencia
+
+Distribuido bajo la licencia **MIT** — ver [`LICENSE`](LICENSE). KaTeX se incluye bajo su propia licencia MIT ([`vendor/katex/LICENSE`](vendor/katex/LICENSE)).
+
+Autor: [@Mixhaaa](https://github.com/Mixhaaa)

@@ -1,0 +1,77 @@
+# Builds the Android APK automatically on GitHub's servers.
+# - Every push: the APK is attached to the workflow run (Actions tab → run → "Artifacts").
+# - Push to main: a GitHub Release is also published, so the APK can be
+#   downloaded from .../releases/latest/download/ProbDist-Pro.apk
+name: Android APK
+
+on:
+  push:
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Android project
+        run: |
+          npm run build
+          npx cap add android
+          npx capacitor-assets generate --android
+
+      - name: Set app version
+        run: |
+          sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          sed -i "s/versionName \"1.0\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
+
+      # Same signing key on every build, so new versions install over old ones.
+      # It is a standard debug key (password "android"): fine for sharing, not for Google Play.
+      - name: Use fixed debug key
+        run: |
+          mkdir -p ~/.android
+          cp android-debug.keystore ~/.android/debug.keystore
+
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk ProbDist-Pro.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ProbDist-Pro-apk
+          path: ProbDist-Pro.apk
+
+      - name: Publish release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: ProbDist Pro v1.0.${{ github.run_number }}
+          body: |
+            APK de Android de ProbDist Pro.
+            Descarga **ProbDist-Pro.apk** en tu celular y ábrelo para instalarlo
+            (Android pedirá permitir "instalar apps de origen desconocido").
+          files: ProbDist-Pro.apk
+          make_latest: true
