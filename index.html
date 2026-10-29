@@ -4,13 +4,21 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>ProbDist Pro — Calculadora &amp; Formulario Botánico (Terra Edition)</title>
+  <meta name="description" content="Calculadora y formulario interactivo de 18 distribuciones de probabilidad, con gráficas, percentiles y desarrollo paso a paso." />
+  <meta name="theme-color" content="#2e6f40" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="ProbDist Pro" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <!-- Google Fonts from Stitch Design System -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
   <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=JetBrains+Mono:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400..700;1,7..72,400&family=Manrope:wght@400;500;600;700&family=Nunito+Sans:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
-  <!-- KaTeX CSS & JS for LaTeX rendering when online -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <!-- KaTeX bundled locally so LaTeX formulas render offline (web, PWA and APK) -->
+  <link rel="stylesheet" href="vendor/katex/katex.min.css" />
+  <script defer src="vendor/katex/katex.min.js"></script>
 
   <style>
     /* =====================================================================
@@ -473,6 +481,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 2px 10px;
       font-family: var(--font-mono);
       font-size: 10px;
       z-index: 2;
@@ -842,6 +852,18 @@
       vertical-align: sub;
       line-height: 0;
       margin-left: 1px;
+    }
+
+    /* Long formulas scroll sideways instead of being clipped on narrow phones */
+    .latex-display-box > .math-latex {
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      align-self: stretch;
+    }
+    .math-latex .katex-display { margin: 0.4em 0; }
+    @media (max-width: 420px) {
+      .math-latex .katex { font-size: 1.02em; }
     }
 
     .math-latex.high-contrast {
@@ -1885,18 +1907,19 @@
       return lnGamma(n + 1) - lnGamma(k + 1) - lnGamma(n - k + 1);
     }
 
+    // erf(x) = P(1/2, x^2): reuses the regularized incomplete gamma (~1e-15 accuracy)
     function erf(x) {
-      const sign = x >= 0 ? 1 : -1;
-      x = Math.abs(x);
-      const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
-      const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
-      const t = 1.0 / (1.0 + p * x);
-      const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
-      return sign * y;
+      if (x === 0) return 0;
+      const sign = x > 0 ? 1 : -1;
+      return sign * regGammaP(0.5, x * x);
     }
 
+    // Uses the complementary function in the tails so tiny probabilities keep their precision
     function normalCDF(x, mu = 0, sigma = 1) {
-      return 0.5 * (1 + erf((x - mu) / (sigma * Math.SQRT2)));
+      const t = (x - mu) / (sigma * Math.SQRT2);
+      if (t === 0) return 0.5;
+      const tail = 0.5 * regGammaQ(0.5, t * t);
+      return t < 0 ? tail : 1 - tail;
     }
 
     function normalInv(p, mu = 0, sigma = 1) {
@@ -1956,6 +1979,26 @@
         }
         return 1 - h * Math.exp(-x + a * Math.log(x) - lnGamma(a));
       }
+    }
+
+    // Upper regularized gamma Q(a, x) = 1 - P(a, x), computed directly for large x
+    function regGammaQ(a, x) {
+      if (x <= 0) return 1;
+      if (x < a + 1) return 1 - regGammaP(a, x);
+      let b = x + 1 - a, c = 1 / 1e-30, d = 1 / b, h = d;
+      for (let i = 1; i <= 300; i++) {
+        const an = -i * (i - a);
+        b += 2;
+        d = an * d + b;
+        if (Math.abs(d) < 1e-30) d = 1e-30;
+        c = b + an / c;
+        if (Math.abs(c) < 1e-30) c = 1e-30;
+        d = 1 / d;
+        const del = d * c;
+        h *= del;
+        if (Math.abs(del - 1) < 1e-15) break;
+      }
+      return h * Math.exp(-x + a * Math.log(x) - lnGamma(a));
     }
 
     function betacf(a, b, x) {
@@ -3230,6 +3273,30 @@
       catalogFilter: 'all'
     };
 
+    // Saved user preferences (theme, language, decimals...) so they survive restarts
+    const PREFS_KEY = 'probdist-prefs-v1';
+
+    function savePrefs() {
+      try {
+        const { lang, theme, decimals, yates, formulaContrast, formulaFormat } = state;
+        localStorage.setItem(PREFS_KEY, JSON.stringify({ lang, theme, decimals, yates, formulaContrast, formulaFormat }));
+      } catch (e) { /* storage unavailable: preferences just won't persist */ }
+    }
+
+    function loadPrefs() {
+      try { return JSON.parse(localStorage.getItem(PREFS_KEY)) || {}; } catch (e) { return {}; }
+    }
+
+    function applySavedPrefs() {
+      const pr = loadPrefs();
+      if (pr.lang === 'en' || pr.lang === 'es') setLanguage(pr.lang);
+      if (pr.theme === 'dark' || pr.theme === 'light') setExplicitTheme(pr.theme);
+      if ([3, 4, 5, 7].includes(pr.decimals)) setDecimals(pr.decimals);
+      if (typeof pr.yates === 'boolean' && pr.yates !== state.yates) toggleYates();
+      if (typeof pr.formulaContrast === 'boolean' && pr.formulaContrast !== state.formulaContrast) toggleFormulaContrast();
+      if (pr.formulaFormat === 'latex' || pr.formulaFormat === 'ascii') setFormulaFormat(pr.formulaFormat);
+    }
+
     function showToast(msg) {
       const t = document.getElementById('stitchToast');
       const txt = document.getElementById('stitchToastText');
@@ -3245,6 +3312,7 @@
       selectDistribution('binomial', true);
       renderCatalogCards();
       updateLanguageStrings();
+      applySavedPrefs();
       window.addEventListener('resize', () => {
         drawMainCalcChart();
         drawMomentsTwoSigmaChart();
@@ -3325,6 +3393,7 @@
       document.getElementById('tileDarkStatus').textContent = isDark ? (state.lang === 'es' ? 'Activo' : 'Active') : '';
       drawMainCalcChart();
       drawMomentsTwoSigmaChart();
+      savePrefs();
     }
 
     function toggleLanguage() {
@@ -3344,6 +3413,7 @@
       renderCatalogCards();
       updateLanguageStrings();
       recalculateAll();
+      savePrefs();
     }
 
     function updateLanguageStrings() {
@@ -3366,6 +3436,7 @@
       document.getElementById('lblStepAccordionBtn').textContent = isEs ? '∑ Ver desarrollo matemático paso a paso (LaTeX)' : '∑ View step-by-step mathematical solution (LaTeX)';
       document.getElementById('didacticTitle').textContent = isEs ? 'Tip didáctico de Ingeniería & Aula' : 'Engineering & Classroom Didactic Tip';
       document.getElementById('uiQuickMomentsTitle').textContent = isEs ? 'Momentos y Propiedades Clave' : 'Key Moments & Properties';
+      document.getElementById('formWhereTitle').textContent = isEs ? 'DONDE:' : 'WHERE:';
 
       document.getElementById('catFilter-all').textContent = isEs ? 'Todas (18)' : 'All (18)';
       document.getElementById('catFilter-discrete').textContent = isEs ? 'Discretas (7)' : 'Discrete (7)';
@@ -3383,18 +3454,21 @@
       });
       document.getElementById('setDecimalsPreview').textContent = `Salida: ${(0).toFixed(dec)} (${dec} dec)`;
       recalculateAll();
+      savePrefs();
     }
 
     function toggleYates() {
       state.yates = !state.yates;
       document.getElementById('switchYates').classList.toggle('on', state.yates);
       recalculateAll();
+      savePrefs();
     }
 
     function toggleFormulaContrast() {
       state.formulaContrast = !state.formulaContrast;
       document.getElementById('switchFormulaContrast').classList.toggle('on', state.formulaContrast);
       document.getElementById('formLatexPMF').classList.toggle('high-contrast', state.formulaContrast);
+      savePrefs();
     }
 
     function setFormulaFormat(fmt) {
@@ -3402,6 +3476,7 @@
       document.getElementById('fmtBtnLatex').style.borderColor = fmt === 'latex' ? 'var(--primary)' : 'var(--outline-variant)';
       document.getElementById('fmtBtnAscii').style.borderColor = fmt === 'ascii' ? 'var(--primary)' : 'var(--outline-variant)';
       recalculateAll();
+      savePrefs();
     }
 
     // =========================================================================
@@ -4185,9 +4260,10 @@
     }
 
     function resetAppDefaults() {
-      state.decimals = 5;
-      state.yates = true;
-      state.formulaFormat = 'latex';
+      setDecimals(5);
+      if (!state.yates) toggleYates();
+      if (!state.formulaContrast) toggleFormulaContrast();
+      setFormulaFormat('latex');
       setExplicitTheme('light');
       setLanguage('es');
       selectDistribution('binomial', true);
@@ -4195,6 +4271,13 @@
     }
 
     window.addEventListener('DOMContentLoaded', initApp);
+
+    // Offline support + "Install app" on the web (skipped inside the Android APK, which already bundles everything)
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.Capacitor) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => { /* offline mode unavailable */ });
+      });
+    }
   </script>
 </body>
 </html>

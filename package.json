@@ -1,0 +1,25 @@
+{
+  "name": "probdist-pro",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ProbDist Pro — calculadora y formulario de distribuciones de probabilidad (web + Android).",
+  "license": "MIT",
+  "scripts": {
+    "build": "node scripts/build-web.mjs",
+    "serve": "npx --yes serve -l 8080 .",
+    "android:add": "npm run build && npx cap add android",
+    "android:icons": "npx capacitor-assets generate --android",
+    "android:sync": "npm run build && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/core": "^8.6.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.6.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
