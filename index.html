@@ -705,7 +705,32 @@
             <div class="card-head">
               <h2 class="card-title" id="uiParamsHeader">Parámetros</h2>
             </div>
-            <div id="calcParamsContainer"></div>
+            <div id="calcParamsContainer">
+              <!-- Default fields painted before JS runs (replaced on start) to avoid layout shift -->
+              <div class="field">
+          <div class="field-row">
+            <label class="field-label" for="pnum_n"><span class="field-sym">n</span>Ensayos totales</label>
+            <div class="stepper-group">
+              <button type="button" class="stepper-btn" id="pdec_n" aria-label="Disminuir n">−</button>
+              <input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="param-num-input num-input" id="pnum_n" value="20" aria-describedby="hint_n err_n">
+              <button type="button" class="stepper-btn" id="pinc_n" aria-label="Aumentar n">+</button>
+            </div>
+          </div>
+          <p class="field-hint" id="hint_n">Entero, 1 o mayor</p>
+          <p class="field-error" id="err_n" role="alert" hidden=""></p>
+        </div><div class="field">
+          <div class="field-row">
+            <label class="field-label" for="pnum_p"><span class="field-sym">p</span>Probabilidad de éxito</label>
+            <div class="stepper-group">
+              <button type="button" class="stepper-btn" id="pdec_p" aria-label="Disminuir p">−</button>
+              <input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="param-num-input num-input" id="pnum_p" value="0.35" aria-describedby="hint_p err_p">
+              <button type="button" class="stepper-btn" id="pinc_p" aria-label="Aumentar p">+</button>
+            </div>
+          </div>
+          <p class="field-hint" id="hint_p">Entre 0 y 1, sin incluirlos (ej. 0.35)</p>
+          <p class="field-error" id="err_p" role="alert" hidden=""></p>
+        </div>
+            </div>
           </section>
 
           <section class="card" aria-labelledby="uiQueryHeader">
