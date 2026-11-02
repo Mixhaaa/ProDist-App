@@ -1,6 +1,6 @@
 // Service worker: caches the app so it works offline once opened.
 // Bump CACHE_VERSION whenever index.html or the assets change.
-const CACHE_VERSION = 'probdist-v1';
+const CACHE_VERSION = 'probdist-v2';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,9 @@ const CORE_ASSETS = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
+  './vendor/inter/inter-latin-wght-normal.woff2',
+  './vendor/inter/inter-latin-ext-wght-normal.woff2',
+  './vendor/inter/inter-greek-wght-normal.woff2',
   './vendor/katex/katex.min.css',
   './vendor/katex/katex.min.js',
   './vendor/katex/fonts/KaTeX_AMS-Regular.woff2',
