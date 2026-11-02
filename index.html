@@ -2,7 +2,7 @@
 <html lang="es" data-theme="light">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>ProbDist Pro — Calculadora &amp; Formulario Botánico (Terra Edition)</title>
   <meta name="description" content="Calculadora y formulario interactivo de 18 distribuciones de probabilidad, con gráficas, percentiles y desarrollo paso a paso." />
   <meta name="theme-color" content="#2e6f40" />
@@ -1226,6 +1226,28 @@
       stroke-linecap: round;
       stroke-linejoin: round;
     }
+
+    /* ---- Field + error message (DESIGN.md §5) ---- */
+    .field { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) 0; border-top: 1px solid var(--color-border); }
+    .field:first-child { border-top: 0; padding-top: 0; }
+    .field-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+    .field-label { font-family: var(--font-ui); font-size: var(--text-sm); line-height: var(--leading-sm); font-weight: 600; color: var(--color-text); }
+    .field-sym { font-family: var(--font-math); font-style: italic; font-size: var(--text-lg); color: var(--color-primary); margin-right: var(--space-1); }
+    .field-hint { font-family: var(--font-ui); font-size: var(--text-sm); line-height: var(--leading-sm); color: var(--color-text-subtle); }
+    .field-error {
+      display: flex; gap: var(--space-2); align-items: flex-start;
+      font-family: var(--font-ui); font-size: var(--text-sm); line-height: var(--leading-sm); color: var(--color-error);
+      background: var(--color-error-soft); border-left: 3px solid var(--color-error);
+      border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3);
+    }
+    .field-error[hidden] { display: none; }
+    .field-error svg { flex: none; width: 18px; height: 18px; margin-top: 1px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .num-input[aria-invalid="true"] { border-color: var(--color-error) !important; box-shadow: 0 0 0 1px var(--color-error); }
+    .result-blocked { display: none; }
+    .is-blocked .result-blocked { display: flex; }
+    .is-blocked .result-live { display: none; }
+    .is-blocked-chart { opacity: 0.35; pointer-events: none; }
+    .calc-blocked .stale-when-blocked { display: none !important; }
   </style>
 </head>
 <body>
@@ -1359,46 +1381,49 @@
             <div style="display:flex;align-items:center;gap:8px;min-width:0;">
               <div class="x-badge-icon" id="badgeXSymbol">x</div>
               <div style="display:flex;flex-direction:column;min-width:0;">
-                <span style="font-weight:700;font-size:13px;color:var(--on-surface);" id="lblTargetXTitle">Valor puntual evaluado</span>
+                <label for="inputTargetX" style="font-weight:700;font-size:13px;color:var(--on-surface);" id="lblTargetXTitle">Valor puntual evaluado</label>
                 <span style="font-family:var(--font-mono);font-size:10px;color:var(--outline);" id="lblTargetXSub">Variable aleatoria observada</span>
               </div>
             </div>
             <div class="stepper-group">
-              <button class="stepper-btn" onclick="stepX(-1)" title="Disminuir x">−</button>
-              <input type="number" step="any" class="param-num-input" id="inputTargetX" value="7" style="color:var(--tertiary-strong);font-size:15px;" oninput="onUserTypedX()" />
-              <button class="stepper-btn" onclick="stepX(1)" title="Aumentar x">+</button>
+              <button class="stepper-btn" onclick="stepX(-1)" title="Disminuir x" aria-label="Disminuir x">−</button>
+              <input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="param-num-input num-input" id="inputTargetX" value="7" style="color:var(--tertiary-strong);font-size:15px;" aria-describedby="err_x" oninput="onUserTypedX()" />
+              <button class="stepper-btn" onclick="stepX(1)" title="Aumentar x" aria-label="Aumentar x">+</button>
             </div>
           </div>
+          <p class="field-error" id="err_x" role="alert" hidden></p>
 
           <!-- Upper Bound b Row (Only visible in interval mode a <= X <= b) -->
           <div class="query-input-card" id="intervalBRow" style="display:none;">
             <div style="display:flex;align-items:center;gap:8px;min-width:0;">
               <div class="x-badge-icon" style="background-color:var(--tertiary);">b</div>
               <div style="display:flex;flex-direction:column;min-width:0;">
-                <span style="font-weight:700;font-size:13px;color:var(--on-surface);" id="lblTargetBTitle">Límite superior del intervalo (b)</span>
+                <label for="inputTargetB" style="font-weight:700;font-size:13px;color:var(--on-surface);" id="lblTargetBTitle">Límite superior del intervalo (b)</label>
                 <span style="font-family:var(--font-mono);font-size:10px;color:var(--outline);">Con a ≤ b</span>
               </div>
             </div>
             <div class="stepper-group">
-              <button class="stepper-btn" onclick="stepB(-1)">−</button>
-              <input type="number" step="any" class="param-num-input" id="inputTargetB" value="10" style="color:var(--tertiary-strong);font-size:15px;" oninput="onUserTypedX()" />
-              <button class="stepper-btn" onclick="stepB(1)">+</button>
+              <button class="stepper-btn" onclick="stepB(-1)" aria-label="Disminuir b">−</button>
+              <input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="param-num-input num-input" id="inputTargetB" value="10" style="color:var(--tertiary-strong);font-size:15px;" aria-describedby="err_b" oninput="onUserTypedX()" />
+              <button class="stepper-btn" onclick="stepB(1)" aria-label="Aumentar b">+</button>
             </div>
           </div>
+          <p class="field-error" id="err_b" role="alert" hidden></p>
 
           <!-- Bidirectional Inverse Percentile / Quantile Input Row -->
           <div class="query-input-card" style="border-style:dashed;">
             <div style="display:flex;align-items:center;gap:8px;min-width:0;">
               <div class="x-badge-icon" style="background-color:var(--tertiary-strong);">P</div>
               <div style="display:flex;flex-direction:column;min-width:0;">
-                <span style="font-weight:700;font-size:12.5px;color:var(--on-surface);" id="lblInvProbTitle">Cálculo Inverso de Percentil (P → x)</span>
+                <label for="inputInverseProb" style="font-weight:700;font-size:12.5px;color:var(--on-surface);" id="lblInvProbTitle">Cálculo Inverso de Percentil (P → x)</label>
                 <span style="font-family:var(--font-mono);font-size:10px;color:var(--outline);" id="lblInvProbSub">Escribe probabilidad (0 a 1) para hallar x</span>
               </div>
             </div>
             <div class="stepper-group">
-              <input type="number" step="0.01" min="0.0001" max="0.9999" class="param-num-input" id="inputInverseProb" value="0.16426" style="width:88px;border-color:var(--tertiary);" onchange="onUserTypedInverseProb()" />
+              <input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="param-num-input num-input" id="inputInverseProb" value="0.16426" style="width:88px;border-color:var(--tertiary);" aria-describedby="lblInvProbSub err_inv" onchange="onUserTypedInverseProb()" onkeydown="if (event.key === 'Enter') onUserTypedInverseProb()" />
             </div>
           </div>
+          <p class="field-error" id="err_inv" role="alert" hidden></p>
         </section>
 
         <!-- 5. Live Calculated Result Primary Showcase (Stitch Amber Hero) -->
@@ -1413,7 +1438,11 @@
             </button>
           </div>
 
-          <div class="result-hero-box">
+          <div class="field-error result-blocked" id="resBlockedMsg" role="status">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span id="resBlockedText">Corrige los datos marcados para ver el resultado.</span>
+          </div>
+          <div class="result-hero-box result-live">
             <div class="eyebrow-row">
               <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--on-tertiary-container);letter-spacing:0.05em;" id="resHeroLabel">PROBABILIDAD PUNTUAL</span>
               <span class="amber-pill" id="resPrecisionBadge">Exacta</span>
@@ -1426,7 +1455,7 @@
           </div>
 
           <!-- Left & Right Tail Split Row -->
-          <div class="tails-grid">
+          <div class="tails-grid result-live">
             <div class="tail-box">
               <span style="font-family:var(--font-mono);font-size:10px;color:var(--on-surface-variant);" id="lblLeftTail">« P(X ≤ 7) Cola Izq.</span>
               <span class="tail-val" id="valLeftTail">0.60105</span>
@@ -1440,15 +1469,15 @@
           </div>
 
           <!-- Expandable Step-by-Step Mathematical Development (LaTeX) -->
-          <button class="step-accordion-btn" onclick="toggleStepAccordion()">
+          <button class="step-accordion-btn stale-when-blocked" onclick="toggleStepAccordion()">
             <span id="lblStepAccordionBtn">∑ Ver desarrollo matemático paso a paso (LaTeX)</span>
             <span id="stepAccordionArrow">▾</span>
           </button>
-          <div class="step-accordion-panel open" id="stepAccordionPanel"></div>
+          <div class="step-accordion-panel open stale-when-blocked" id="stepAccordionPanel"></div>
         </section>
 
         <!-- 6. Educational Didactic Helper Banner -->
-        <section class="didactic-banner">
+        <section class="didactic-banner stale-when-blocked">
           <span style="font-size:20px;line-height:1;">💡</span>
           <div style="display:flex;flex-direction:column;gap:3px;">
             <strong style="font-family:var(--font-headline);font-size:14px;" id="didacticTitle">Tip didáctico de Ingeniería &amp; Aula</strong>
@@ -1457,7 +1486,7 @@
         </section>
 
         <!-- 7. Moments Quick Summary Card -->
-        <section class="stitch-card">
+        <section class="stitch-card stale-when-blocked">
           <span class="section-title-wrap" id="uiQuickMomentsTitle">Momentos y Propiedades Clave</span>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;">
             <div class="tail-box" style="align-items:center;">
@@ -1752,7 +1781,7 @@
         <div style="display:flex;flex-direction:column;gap:8px;">
           <div class="search-input-wrap">
             <span style="position:absolute;left:12px;color:var(--outline);pointer-events:none;">🔍</span>
-            <input type="search" id="catalogSearchInput" class="stitch-search" placeholder="Buscar distribución (ej. Normal, Weibull, Poisson...)" oninput="renderCatalogCards()" />
+            <input type="search" id="catalogSearchInput" class="stitch-search" aria-label="Buscar distribución" placeholder="Buscar distribución (ej. Normal, Weibull, Poisson...)" oninput="renderCatalogCards()" />
           </div>
           <div class="filter-pills-bar">
             <button class="filter-pill-btn active" id="catFilter-all" onclick="setCatalogFilter('all')">Todas (18)</button>
@@ -3370,7 +3399,8 @@
       yates: true,
       formulaContrast: true,
       formulaFormat: 'latex', // 'latex' or 'ascii'
-      catalogFilter: 'all'
+      catalogFilter: 'all',
+      fieldErrors: {}
     };
 
     // Saved user preferences (theme, language, decimals...) so they survive restarts
@@ -3445,6 +3475,8 @@
       document.getElementById('globalDistSelect').value = distId;
       document.getElementById('inputTargetX').value = state.x;
       document.getElementById('inputTargetB').value = state.b;
+      state.fieldErrors = {};
+      ['x', 'b', 'inv'].forEach(k => showFieldError(k, ''));
       renderParameterControls();
       updateQueryModeUI();
       recalculateAll();
@@ -3582,65 +3614,176 @@
     // =========================================================================
     // 4. DYNAMIC PARAMETER CONTROLS & STEPPERS
     // =========================================================================
+    // =========================================================================
+    // INPUT VALIDATION — only mathematical rules, no artificial ranges.
+    // MAX_SAFE limits exist only where a sum loops over every value and the
+    // phone would freeze; the message says so.
+    // =========================================================================
+    const PARAM_RULES = {
+      binomial: { n: { int: true, min: 1, maxSafe: 1e6 }, p: { prob: true } },
+      normal: { mu: {}, sigma: { gt0: true } },
+      poisson: { lambda: { gt0: true, maxSafe: 1e6 } },
+      weibull: { alpha: { gt0: true }, beta: { gt0: true } },
+      exponential: { lambda: { gt0: true } },
+      gamma: { alpha: { gt0: true }, beta: { gt0: true } },
+      t: { df: { int: true, min: 1 } },
+      chisquare: { df: { int: true, min: 1 } },
+      f: { df1: { int: true, min: 1 }, df2: { int: true, min: 1 } },
+      beta: { alpha: { gt0: true }, beta: { gt0: true } },
+      geometric1: { p: { prob: true } },
+      geometric2: { p: { prob: true } },
+      hypergeometric: { N: { int: true, min: 1, maxSafe: 1e6 }, M: { int: true, min: 0 }, n: { int: true, min: 1 } },
+      negbin1: { r: { int: true, min: 1, maxSafe: 1e5 }, p: { prob: true } },
+      negbin2: { r: { int: true, min: 1, maxSafe: 1e5 }, p: { prob: true } },
+      lognormal: { mu: {}, sigma: { gt0: true } },
+      pareto: { m: { gt0: true }, alpha: { gt0: true } },
+      uniform: { a: {}, b: {} }
+    };
+    const MAX_SAFE_X = 1e7;
+
+    const fmtLimit = (v) => v >= 1e5 ? v.toLocaleString('en-US').replace(/,/g, ' ') : String(v);
+
+    // Reads a typed number. Accepts comma or point as decimal separator.
+    function parseTyped(raw) {
+      const t = String(raw).trim().replace(',', '.');
+      if (t === '') return { empty: true };
+      if (!/^[+\-−]?(\d+\.?\d*|\.\d+)(e[+\-]?\d+)?$/i.test(t)) return { bad: true };
+      return { value: Number(t.replace('−', '-')) };
+    }
+
+    function ruleHint(rule, isEs) {
+      if (rule.prob) return isEs ? 'Entre 0 y 1, sin incluirlos (ej. 0.35)' : 'Between 0 and 1, exclusive (e.g. 0.35)';
+      if (rule.int) return rule.min === 0
+        ? (isEs ? 'Entero, 0 o mayor' : 'Whole number, 0 or more')
+        : (isEs ? `Entero, ${rule.min} o mayor` : `Whole number, ${rule.min} or more`);
+      if (rule.gt0) return isEs ? 'Mayor que 0' : 'Greater than 0';
+      return isEs ? 'Cualquier número real' : 'Any real number';
+    }
+
+    // Returns '' when valid, otherwise a message saying what is wrong and how to fix it.
+    function checkValue(sym, raw, parsed, rule, isEs) {
+      if (parsed.empty) return isEs ? `Escribe un valor para ${sym}.` : `Enter a value for ${sym}.`;
+      if (parsed.bad) return isEs ? `“${raw}” no es un número. Escribe solo cifras, por ejemplo 0.5.` : `“${raw}” is not a number. Type digits only, e.g. 0.5.`;
+      const v = parsed.value;
+      if (!Number.isFinite(v)) return isEs ? `${sym} es demasiado grande.` : `${sym} is too large.`;
+      if (rule.prob && !(v > 0 && v < 1)) return isEs ? `${sym} debe estar entre 0 y 1, sin incluirlos (por ejemplo 0.35). Escribiste ${raw}.` : `${sym} must be between 0 and 1, exclusive (e.g. 0.35). You typed ${raw}.`;
+      if (rule.int && !Number.isInteger(v)) return isEs ? `${sym} debe ser un número entero, sin decimales. Escribiste ${raw}.` : `${sym} must be a whole number. You typed ${raw}.`;
+      if (rule.int && v < rule.min) return isEs ? `${sym} debe ser un entero mayor o igual que ${rule.min}. Escribiste ${raw}.` : `${sym} must be a whole number of at least ${rule.min}. You typed ${raw}.`;
+      if (rule.gt0 && !(v > 0)) return isEs ? `${sym} debe ser mayor que 0. Escribiste ${raw}.` : `${sym} must be greater than 0. You typed ${raw}.`;
+      if (rule.maxSafe && v > rule.maxSafe) return isEs ? `${sym} es demasiado grande para calcularlo aquí sin congelar la app. Usa un valor de hasta ${fmtLimit(rule.maxSafe)}.` : `${sym} is too large to compute here without freezing the app. Use at most ${fmtLimit(rule.maxSafe)}.`;
+      return '';
+    }
+
+    // Rules that involve two parameters at once
+    function checkCross(distId, v, isEs) {
+      const errs = {};
+      if (distId === 'hypergeometric') {
+        if (Number.isFinite(v.M) && Number.isFinite(v.N) && v.M > v.N) errs.M = isEs ? `M (éxitos en la población) no puede ser mayor que N = ${v.N}.` : `M (successes in the population) cannot exceed N = ${v.N}.`;
+        if (Number.isFinite(v.n) && Number.isFinite(v.N) && v.n > v.N) errs.n = isEs ? `n (tamaño de la muestra) no puede ser mayor que N = ${v.N}.` : `n (sample size) cannot exceed N = ${v.N}.`;
+      }
+      if (distId === 'uniform' && Number.isFinite(v.a) && Number.isFinite(v.b) && !(v.b > v.a)) {
+        errs.b = isEs ? `b debe ser mayor que a = ${v.a}. Escribiste b = ${v.b}.` : `b must be greater than a = ${v.a}. You typed b = ${v.b}.`;
+      }
+      return errs;
+    }
+
+    const ALERT_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+
+    function showFieldError(key, msg) {
+      const el = document.getElementById(`err_${key}`);
+      const input = document.getElementById(key === 'x' ? 'inputTargetX' : key === 'b' ? 'inputTargetB' : key === 'inv' ? 'inputInverseProb' : `pnum_${key}`);
+      if (el) {
+        el.hidden = !msg;
+        el.innerHTML = msg ? `${ALERT_ICON}<span>${msg}</span>` : '';
+      }
+      if (input) {
+        if (msg) input.setAttribute('aria-invalid', 'true');
+        else input.removeAttribute('aria-invalid');
+      }
+      if (!state.fieldErrors) state.fieldErrors = {};
+      if (msg) state.fieldErrors[key] = msg; else delete state.fieldErrors[key];
+    }
+
+    // Shows "fix the marked data" instead of a stale result. Returns true when blocked.
+    function renderBlockedState() {
+      const blocking = Object.keys(state.fieldErrors || {}).filter(k => k !== 'inv');
+      const blocked = blocking.length > 0;
+      const card = document.getElementById('resBlockedMsg');
+      if (card) card.closest('section').classList.toggle('is-blocked', blocked);
+      const chart = document.getElementById('mainCalcSvg');
+      if (chart) chart.closest('section').classList.toggle('is-blocked-chart', blocked);
+      document.getElementById('screen-calc').classList.toggle('calc-blocked', blocked);
+      if (blocked) {
+        const isEs = state.lang === 'es';
+        document.getElementById('resBlockedText').textContent = isEs
+          ? 'Corrige los datos marcados en rojo para ver el resultado.'
+          : 'Fix the fields marked in red to see the result.';
+      }
+      return blocked;
+    }
+
+    // Validates every parameter field together and applies them only if all are valid
+    function validateParams() {
+      const d = DISTRIBUTIONS[state.distId];
+      const rules = PARAM_RULES[d.id] || {};
+      const isEs = state.lang === 'es';
+      const values = {};
+      const msgs = {};
+      d.params.forEach(p => {
+        const input = document.getElementById(`pnum_${p.key}`);
+        const raw = input ? input.value.trim() : String(state.params[p.key]);
+        const parsed = parseTyped(raw);
+        msgs[p.key] = checkValue(p.symbol, raw, parsed, rules[p.key] || {}, isEs);
+        values[p.key] = msgs[p.key] ? NaN : parsed.value;
+      });
+      const cross = checkCross(d.id, values, isEs);
+      Object.entries(cross).forEach(([k, m]) => { if (!msgs[k]) msgs[k] = m; });
+      d.params.forEach(p => showFieldError(p.key, msgs[p.key]));
+      if (d.params.every(p => !msgs[p.key])) {
+        d.params.forEach(p => { state.params[p.key] = values[p.key]; });
+      }
+      recalculateAll();
+    }
+
     function renderParameterControls() {
       const d = DISTRIBUTIONS[state.distId];
       const container = document.getElementById('calcParamsContainer');
+      const rules = PARAM_RULES[d.id] || {};
+      const isEs = state.lang === 'es';
       container.innerHTML = '';
 
       d.params.forEach(p => {
+        const rule = rules[p.key] || {};
         const val = state.params[p.key];
-        const card = document.createElement('div');
-        card.className = 'param-box';
-        const scales = p.scale || [p.min, '', p.max];
-        card.innerHTML = `
-          <div class="param-main-line">
-            <div class="param-info">
-              <div class="param-title-row">
-                <span class="param-sym">${p.symbol}</span>
-                <span class="param-name">${p.name[state.lang]}</span>
-              </div>
-              <span class="param-domain-hint">${p.hint[state.lang]}</span>
-            </div>
+        const field = document.createElement('div');
+        field.className = 'field';
+        field.innerHTML = `
+          <div class="field-row">
+            <label class="field-label" for="pnum_${p.key}"><span class="field-sym">${p.symbol}</span>${p.name[state.lang]}</label>
             <div class="stepper-group">
-              <button class="stepper-btn" id="pdec_${p.key}" title="Disminuir ${p.symbol}">−</button>
-              <input type="number" class="param-num-input" id="pnum_${p.key}" value="${val}" min="${p.min}" max="${p.max}" step="${p.step}" />
-              <button class="stepper-btn" id="pinc_${p.key}" title="Aumentar ${p.symbol}">+</button>
+              <button type="button" class="stepper-btn" id="pdec_${p.key}" aria-label="${isEs ? 'Disminuir' : 'Decrease'} ${p.symbol}">−</button>
+              <input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="param-num-input num-input" id="pnum_${p.key}" value="${val}" aria-describedby="hint_${p.key} err_${p.key}" />
+              <button type="button" class="stepper-btn" id="pinc_${p.key}" aria-label="${isEs ? 'Aumentar' : 'Increase'} ${p.symbol}">+</button>
             </div>
           </div>
-          <input type="range" class="stitch-slider" id="prng_${p.key}" value="${val}" min="${p.min}" max="${p.max}" step="${p.step}" />
-          <div class="slider-scale-labels">
-            <span>${scales[0]}</span>
-            <span style="color:var(--primary);font-weight:600;">${scales[1] || ''}</span>
-            <span>${scales[2]}</span>
-          </div>
+          <p class="field-hint" id="hint_${p.key}">${ruleHint(rule, isEs)}</p>
+          <p class="field-error" id="err_${p.key}" role="alert" hidden></p>
         `;
-        container.appendChild(card);
+        container.appendChild(field);
 
-        const numEl = card.querySelector(`#pnum_${p.key}`);
-        const rngEl = card.querySelector(`#prng_${p.key}`);
-        const decBtn = card.querySelector(`#pdec_${p.key}`);
-        const incBtn = card.querySelector(`#pinc_${p.key}`);
-
-        const applyVal = (raw) => {
-          let v = parseFloat(raw);
-          if (isNaN(v)) return;
-          v = Math.max(p.min, Math.min(p.max, v));
-          if (p.integer) v = Math.round(v);
-          else v = Number(v.toFixed(4));
-          state.params[p.key] = v;
-          numEl.value = v;
-          rngEl.value = v;
-          if (d.id === 'binomial' && p.key === 'n' && state.x > v) {
-            state.x = v;
-            document.getElementById('inputTargetX').value = state.x;
-          }
-          recalculateAll();
+        const numEl = field.querySelector(`#pnum_${p.key}`);
+        const stepBy = (dir) => {
+          const parsed = parseTyped(numEl.value);
+          const base = parsed.value !== undefined && Number.isFinite(parsed.value) ? parsed.value : state.params[p.key];
+          let next = base + dir * p.step;
+          next = rule.int ? Math.round(next) : Number(next.toFixed(10));
+          numEl.value = String(next);
+          validateParams();
         };
-
-        numEl.addEventListener('input', () => applyVal(numEl.value));
-        rngEl.addEventListener('input', () => applyVal(rngEl.value));
-        decBtn.addEventListener('click', () => applyVal(state.params[p.key] - p.step));
-        incBtn.addEventListener('click', () => applyVal(state.params[p.key] + p.step));
+        // The field is never rewritten while typing; it is only validated.
+        numEl.addEventListener('input', validateParams);
+        field.querySelector(`#pdec_${p.key}`).addEventListener('click', () => stepBy(-1));
+        field.querySelector(`#pinc_${p.key}`).addEventListener('click', () => stepBy(1));
       });
     }
 
@@ -3678,6 +3821,7 @@
       }
       state.x = nextX;
       document.getElementById('inputTargetX').value = state.x;
+      showFieldError('x', '');
       recalculateAll();
     }
 
@@ -3686,23 +3830,44 @@
       const step = d.type === 'discrete' ? 1 : 0.25;
       state.b = Number((state.b + dir * step).toFixed(4));
       document.getElementById('inputTargetB').value = state.b;
+      showFieldError('b', '');
       recalculateAll();
     }
 
     function onUserTypedX() {
-      const xv = parseFloat(document.getElementById('inputTargetX').value);
-      const bv = parseFloat(document.getElementById('inputTargetB').value);
-      if (!isNaN(xv)) state.x = xv;
-      if (!isNaN(bv)) state.b = bv;
+      const d = DISTRIBUTIONS[state.distId];
+      const isEs = state.lang === 'es';
+      const rule = { int: d.type === 'discrete', min: -Infinity };
+      const check = (key, inputId) => {
+        const raw = document.getElementById(inputId).value.trim();
+        const parsed = parseTyped(raw);
+        let msg = '';
+        if (parsed.empty) msg = isEs ? `Escribe un valor para ${key}.` : `Enter a value for ${key}.`;
+        else if (parsed.bad) msg = isEs ? `“${raw}” no es un número. Escribe solo cifras, por ejemplo 7.` : `“${raw}” is not a number. Type digits only, e.g. 7.`;
+        else if (rule.int && !Number.isInteger(parsed.value)) msg = isEs ? `En una distribución discreta ${key} debe ser un número entero. Escribiste ${raw}.` : `In a discrete distribution ${key} must be a whole number. You typed ${raw}.`;
+        else if (Math.abs(parsed.value) > MAX_SAFE_X) msg = isEs ? `${key} es demasiado grande. Usa un valor entre −${fmtLimit(MAX_SAFE_X)} y ${fmtLimit(MAX_SAFE_X)}.` : `${key} is too large. Use a value between −${fmtLimit(MAX_SAFE_X)} and ${fmtLimit(MAX_SAFE_X)}.`;
+        showFieldError(key, msg);
+        return msg ? null : parsed.value;
+      };
+      const xv = check('x', 'inputTargetX');
+      const bv = state.queryMode === 'interval' ? check('b', 'inputTargetB') : (showFieldError('b', ''), null);
+      if (xv !== null) state.x = xv;
+      if (bv !== null) state.b = bv;
       recalculateAll();
     }
 
     function onUserTypedInverseProb() {
-      const pVal = parseFloat(document.getElementById('inputInverseProb').value);
-      if (isNaN(pVal) || pVal <= 0 || pVal >= 1) {
-        showToast(state.lang === 'es' ? 'Ingresa una probabilidad entre 0 y 1' : 'Enter a probability between 0 and 1');
+      const rawP = document.getElementById('inputInverseProb').value.trim();
+      const parsedP = parseTyped(rawP);
+      const pVal = parsedP.value;
+      if (parsedP.empty || parsedP.bad || !(pVal > 0 && pVal < 1)) {
+        showFieldError('inv', state.lang === 'es'
+          ? `La probabilidad debe estar entre 0 y 1, sin incluirlos (por ejemplo 0.95)${rawP ? `. Escribiste ${rawP}` : ''}.`
+          : `The probability must be between 0 and 1, exclusive (e.g. 0.95)${rawP ? `. You typed ${rawP}` : ''}.`);
         return;
       }
+      if (Object.keys(state.fieldErrors || {}).some(k => k !== 'inv')) return;
+      showFieldError('inv', '');
       const d = DISTRIBUTIONS[state.distId];
       const p = state.params;
       if (state.queryMode === 'eq' || state.queryMode === 'interval') {
@@ -3744,14 +3909,8 @@
       const isEs = state.lang === 'es';
       const dec = state.decimals;
 
-      // Enforce hypergeometric & uniform validity
-      if (d.id === 'hypergeometric') {
-        if (p.M > p.N) p.M = p.N;
-        if (p.n > p.N) p.n = p.N;
-      }
-      if (d.id === 'uniform' && p.b <= p.a) {
-        p.b = p.a + 1;
-      }
+      // Invalid input: never show a stale number; explain what to fix instead
+      if (renderBlockedState()) return;
 
       // Header & Identity Card
       document.getElementById('headerNotationText').textContent = d.notation;
@@ -3821,6 +3980,7 @@
         : `(${(mainProb * 100).toFixed(2)}%)`;
       document.getElementById('resSubstitutedFormula').textContent = d.subFormula(x, p);
       document.getElementById('inputInverseProb').value = Number(leftTail.toFixed(4));
+      showFieldError('inv', '');
 
       document.getElementById('lblLeftTail').textContent = isEs ? `« P(X ≤ ${x}) Cola Izq.` : `« P(X ≤ ${x}) Left Tail`;
       document.getElementById('valLeftTail').textContent = leftTail.toFixed(dec);
@@ -4141,7 +4301,11 @@
       `;
 
       if (d.type === 'discrete') {
-        const kStart = Math.max(0, Math.floor(minX));
+        // Draw at most 81 bars; with large parameters, center the window on the mean
+        let kStart = Math.max(0, Math.floor(minX));
+        if (Math.ceil(maxX) - kStart > 80 && Number.isFinite(m.mean)) {
+          kStart = Math.max(kStart, Math.min(Math.ceil(maxX) - 80, Math.round(m.mean) - 40));
+        }
         const kEnd = Math.min(kStart + 80, Math.max(kStart + 1, Math.ceil(maxX)));
         const count = kEnd - kStart + 1;
         const pts = [];
@@ -4266,6 +4430,7 @@
     function selectXFromChart(kVal) {
       state.x = kVal;
       document.getElementById('inputTargetX').value = kVal;
+      showFieldError('x', '');
       recalculateAll();
     }
 
