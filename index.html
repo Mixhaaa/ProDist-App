@@ -13,8 +13,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <!-- KaTeX bundled locally so LaTeX formulas render offline (web, PWA and APK) -->
-  <link rel="stylesheet" href="vendor/katex/katex.min.css" />
-  <script defer src="vendor/katex/katex.min.js"></script>
+  <link rel="stylesheet" href="vendor/katex/katex.min.css" media="print" onload="this.media='all'" />
+  <!-- Loaded without blocking startup; the formulas screen re-renders when it is ready -->
+  <script async src="vendor/katex/katex.min.js" onload="window.onKatexReady && window.onKatexReady()"></script>
 
   <style>
     /* =====================================================================
@@ -301,6 +302,7 @@
     .btn-danger { background: var(--color-surface); color: var(--color-error); border: 1px solid var(--color-error); }
     .btn-danger:hover { background: var(--color-error-soft); }
     .btn-block { width: 100%; }
+    .btn-sm { padding: 0 var(--space-3); }
     .btn:disabled { opacity: .5; cursor: not-allowed; }
 
     /* =====================================================================
@@ -391,6 +393,7 @@
        CALCULATOR
        ===================================================================== */
     .model-card { gap: var(--space-2); }
+    .model-card .chart-box { margin-top: var(--space-1); padding: var(--space-2) var(--space-3); }
     .model-title { font-size: var(--text-xl); line-height: var(--leading-xl); font-weight: 700; }
     .model-notation { font-family: var(--font-math); font-style: italic; font-weight: 400; color: var(--color-primary); white-space: nowrap; }
 
@@ -424,6 +427,7 @@
       border: 1px solid var(--color-border-strong); background: var(--color-surface);
     }
     .disclosure-btn:hover { background: var(--color-surface-sunken); }
+    .disclosure-quiet { border-color: transparent; padding: 0 var(--space-2); }
     .disclosure-btn .icon { transition: transform var(--duration); }
     .disclosure-btn[aria-expanded="true"] .icon { transform: rotate(180deg); }
     .step-accordion-panel { display: none; flex-direction: column; gap: var(--space-2); padding: var(--space-3); background: var(--color-surface-sunken); border-radius: var(--radius-md); font-size: var(--text-sm); line-height: var(--leading-sm); overflow-x: auto; }
@@ -436,7 +440,7 @@
     /* Chart */
     .chart-box { background: var(--color-surface-sunken); border-radius: var(--radius-md); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
     .chart-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-1) var(--space-3); font-size: var(--text-xs); line-height: var(--leading-xs); color: var(--color-text-subtle); font-variant-numeric: tabular-nums; }
-    .chart-svg { width: 100%; height: auto; min-height: 170px; display: block; overflow: visible; border-radius: var(--radius-sm); }
+    .chart-svg { width: 100%; height: auto; min-height: 150px; display: block; overflow: visible; border-radius: var(--radius-sm); }
     .chart-svg-fixed { max-width: 420px; margin: 0 auto; min-height: 0; }
     .chart-svg-fixed .chart-axis { font-size: 11px; }
     .chart-svg:focus-visible { outline-offset: 4px; }
@@ -576,6 +580,12 @@
     /* =====================================================================
        RESPONSIVE
        ===================================================================== */
+    @media (max-width: 599px) {
+      .model-card .chip-row { display: none; }
+      #calcParamsContainer .field-row { flex-wrap: nowrap; }
+      #calcParamsContainer .field-label { flex: 1 1 0; }
+      #calcParamsContainer .num-input { width: 76px; }
+    }
     @media (min-width: 600px) {
       .brand-text { display: flex; }
       .card { padding: var(--space-6); }
@@ -687,18 +697,41 @@
     <div class="screen-view active" id="screen-calc">
       <div class="calc-layout">
         <div class="calc-col calc-col-inputs">
-          <section class="card model-card">
+          <!-- Distribution + chart in one card: the chart stays next to the parameters -->
+          <section class="card model-card" aria-labelledby="calcDistName">
             <div class="card-head">
               <span class="eyebrow" id="calcModelKind">Modelo discreto</span>
-              <button class="btn-icon" onclick="copyCurrentSummary()" aria-label="Copiar resumen del cálculo" id="btnShareSummary">
-                <svg class="icon" aria-hidden="true"><use href="#i-share"/></svg>
-              </button>
+              <div class="row">
+                <button class="btn btn-secondary btn-sm" id="btnToggleCDF" onclick="toggleChartFunction()" aria-pressed="false">Ver CDF</button>
+                <button class="btn-icon" onclick="copyCurrentSummary()" aria-label="Copiar resumen del cálculo" id="btnShareSummary">
+                  <svg class="icon" aria-hidden="true"><use href="#i-share"/></svg>
+                </button>
+              </div>
             </div>
             <h1 class="model-title">
               <span id="calcDistName">Binomial</span>
               <span class="model-notation num" id="calcDistLiveNotation">X ~ Bin(20, 0.35)</span>
             </h1>
             <div class="chip-row" id="calcMicroChips"></div>
+            <div class="chart-box">
+              <div class="chart-meta">
+                <span class="chip chip-primary num" id="calcRegionBadge">P(X = 7) = 0.18440</span>
+                <span id="calcChartHeading">Gráfica de la PMF</span>
+              </div>
+              <svg id="mainCalcSvg" class="chart-svg" viewBox="0 0 340 150" role="img" aria-labelledby="chartSummary" tabindex="0"></svg>
+              <p id="chartSummary" class="sr-only"></p>
+              <div class="chart-meta">
+                <span class="num" id="chartQuickMoments">μ = 7.00, σ = 2.13</span>
+                <span id="chartTouchHint">Toca una barra para elegir x</span>
+              </div>
+              <span class="sr-only" id="chartLegendRight"></span>
+            </div>
+            <details class="chart-details" id="chartDetails">
+              <summary class="disclosure-btn disclosure-quiet"><span id="lblChartTable">Ver valores de la gráfica</span><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+              <div class="chart-table-wrap" style="margin-top:var(--space-2)">
+                <table class="data-table" id="chartDataTable"></table>
+              </div>
+            </details>
           </section>
 
           <section class="card" aria-labelledby="uiParamsHeader">
@@ -828,30 +861,6 @@
             <div class="step-accordion-panel open stale-when-blocked" id="stepAccordionPanel"></div>
           </section>
 
-          <section class="card" aria-labelledby="calcChartHeading">
-            <div class="card-head">
-              <h2 class="card-title"><svg class="icon" aria-hidden="true"><use href="#i-chart"/></svg><span id="calcChartHeading">Gráfica de la PMF</span></h2>
-              <button class="btn btn-secondary" id="btnToggleCDF" onclick="toggleChartFunction()" aria-pressed="false">CDF F(x)</button>
-            </div>
-            <div class="chart-box">
-              <div class="chart-meta">
-                <span class="chip chip-primary" id="calcRegionBadge">Selección: x = 7</span>
-                <span id="chartLegendRight" class="num">E[X] = 7.00 | máx: 0.164</span>
-              </div>
-              <svg id="mainCalcSvg" class="chart-svg" viewBox="0 0 340 140" role="img" aria-labelledby="chartSummary" tabindex="0"></svg>
-              <p id="chartSummary" class="sr-only"></p>
-            </div>
-            <div class="chart-foot">
-              <span id="chartTouchHint">Toca una barra, o usa ← → con el teclado, para elegir x</span>
-              <span class="num" id="chartQuickMoments">μ = 7.00, σ = 2.13</span>
-            </div>
-            <details class="chart-details" id="chartDetails">
-              <summary class="disclosure-btn"><span id="lblChartTable">Ver valores de la gráfica</span><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
-              <div class="chart-table-wrap" style="margin-top:var(--space-2)">
-                <table class="data-table" id="chartDataTable"></table>
-              </div>
-            </details>
-          </section>
 
           <section class="note stale-when-blocked" aria-labelledby="didacticTitle">
             <svg class="icon" aria-hidden="true"><use href="#i-bulb"/></svg>
@@ -2603,6 +2612,8 @@
       updateLanguageStrings();
       applySavedPrefs();
       initKeyboard();
+      window.onKatexReady = () => renderFormulasScreen(DISTRIBUTIONS[state.distId]);
+      if (window.katex) window.onKatexReady();
       window.addEventListener('resize', () => {
         drawMainCalcChart();
         drawMomentsTwoSigmaChart();
@@ -2741,7 +2752,7 @@
       uiResultHeader: ['Resultado', 'Result'], lblCopyBtn: ['Copiar', 'Copy'],
       lblStepAccordionBtn: ['Ver desarrollo paso a paso', 'Show step-by-step working'],
       lblChartTable: ['Ver valores de la gráfica', 'Show chart values'],
-      chartTouchHint: ['Toca una barra, o usa ← → con el teclado, para elegir x', 'Tap a bar, or use ← → on the keyboard, to choose x'],
+      chartTouchHint: ['Toca una barra para elegir x', 'Tap a bar to choose x'],
       didacticTitle: ['Para tu clase', 'Classroom note'],
       uiQuickMomentsTitle: ['Momentos', 'Moments'], qLblMean: ['Media E[X]', 'Mean E[X]'], qLblVar: ['Varianza Var(X)', 'Variance Var(X)'], qLblSD: ['Desviación estándar σ', 'Standard deviation σ'],
       formWhereTitle: ['Donde', 'Where'],
@@ -3220,9 +3231,13 @@
       document.getElementById('calcChartHeading').textContent = d.type === 'discrete'
         ? (isEs ? 'Gráfica de la PMF' : 'PMF chart')
         : (isEs ? 'Gráfica de la PDF' : 'PDF chart');
-      document.getElementById('calcRegionBadge').textContent = state.queryMode === 'interval'
-        ? `${isEs ? 'Intervalo' : 'Interval'} [${Math.min(x, b)}, ${Math.max(x, b)}]`
-        : `${isEs ? 'Selección' : 'Selected'}: x = ${x}`;
+      const shortQuery = {
+        eq: d.type === 'discrete' ? `P(X = ${x})` : `f(${x})`,
+        le: `P(X ≤ ${x})`,
+        ge: `P(X ≥ ${x})`,
+        interval: `P(${Math.min(x, b)} ≤ X ≤ ${Math.max(x, b)})`
+      }[state.queryMode];
+      document.getElementById('calcRegionBadge').textContent = `${shortQuery} = ${mainProb.toFixed(dec)}`;
       document.getElementById('chartQuickMoments').textContent = `μ = ${Number.isFinite(m.mean) ? m.mean.toFixed(2) : '∞'}, σ = ${Number.isFinite(m.sd) ? m.sd.toFixed(2) : '∞'}`;
 
       // Step-by-Step Accordion & Didactic Tip
@@ -3510,7 +3525,7 @@
 
       // 1 viewBox unit = 1 CSS px, so labels keep their real size on any screen
       const W = Math.max(280, Math.round(svg.getBoundingClientRect().width) || 340);
-      const H = W < 500 ? 170 : 220;
+      const H = W < 500 ? 150 : 210;
       svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
       const padL = 22, padR = 16, padT = 24, padB = 24;
       const plotW = W - padL - padR;

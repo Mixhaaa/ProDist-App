@@ -64,8 +64,8 @@ Escala de 4 px: `--space-1` 4 · `--space-2` 8 · `--space-3` 12 · `--space-4` 
 
 - Margen lateral en celular: `--space-4` (16 px). Entre tarjetas: `--space-4`. Dentro de tarjetas: `--space-4` (celular) / `--space-6` (escritorio).
 - Ancho máximo del contenido: `--content-max` 1120 px.
-- **Celular** (< 1024 px): una columna. En Cálculo el orden es: distribución → parámetros → consulta → **resultado** → gráfica → desarrollo.
-- **Escritorio** (≥ 1024 px): dos columnas en Cálculo — izquierda: parámetros y consulta; derecha (fija al hacer scroll): resultado y gráfica. Navegación como pestañas en el encabezado.
+- **Celular** (< 1024 px): una columna. En Cálculo el orden es: distribución → **gráfica** (con la probabilidad seleccionada) → parámetros → consulta → **resultado** → desarrollo. La gráfica va junto a los parámetros para que el estudiante vea cómo cada uno cambia la forma.
+- **Escritorio** (≥ 1024 px): dos columnas en Cálculo — izquierda: distribución, gráfica, parámetros y consulta; derecha: resultado, desarrollo y momentos. Navegación como pestañas en el encabezado.
 - Ninguna pantalla puede tener scroll horizontal a 320 px.
 
 ## 4. Forma y profundidad

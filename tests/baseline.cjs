@@ -44,7 +44,7 @@ async function collect() {
   const browser = await chromium.launch();
   const page = await browser.newPage();
   await page.goto('file://' + path.join(ROOT, 'index.html'));
-  await page.waitForFunction(() => typeof DISTRIBUTIONS !== 'undefined' && document.getElementById('resMainValue'));
+  await page.waitForFunction(() => typeof DISTRIBUTIONS !== 'undefined' && typeof state !== 'undefined' && window.katex);
   await page.waitForTimeout(300);
 
   const result = await page.evaluate(async ({ CASES, TYPED }) => {
