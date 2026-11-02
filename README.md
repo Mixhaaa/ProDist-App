@@ -1,4 +1,4 @@
-# 🌿 ProbDist Pro — Calculadora & Formulario de Distribuciones de Probabilidad (Terra Edition)
+# ProbDist — Calculadora y formulario de distribuciones de probabilidad
 
 <p align="center"><img src="icons/icon-192.png" width="96" alt="Icono de ProbDist Pro" /></p>
 
@@ -12,9 +12,9 @@
 ![licencia](https://img.shields.io/badge/licencia-MIT-blue)
 [![Android APK](https://github.com/Mixhaaa/ProDist-App/actions/workflows/android-apk.yml/badge.svg)](https://github.com/Mixhaaa/ProDist-App/actions/workflows/android-apk.yml)
 
-**ProbDist Pro (Terra Edition)** es una aplicación web y Android interactiva diseñada para el cálculo exacto, la visualización gráfica y la enseñanza de **18 distribuciones de probabilidad** (discretas y continuas) en cursos de estadística de colegio, universidad e ingeniería.
+**ProbDist** es una aplicación web y Android interactiva diseñada para el cálculo exacto, la visualización gráfica y la enseñanza de **18 distribuciones de probabilidad** (discretas y continuas) en cursos de estadística de colegio, universidad e ingeniería.
 
-Inspirada en los applets estadísticos de [Matthew Bognar, Ph.D. (University of Iowa)](https://mabognar.github.io/apps/) y fundamentada en las recomendaciones pedagógicas [GAISE de la American Statistical Association](https://www.amstat.org/docs/default-source/amstat-documents/gaisecollege_full.pdf), la aplicación combina un motor numérico de alta precisión en tiempo real con el sistema de diseño orgánico **Terra Natural / Terra Nocturno** creado en [Google Stitch](https://stitch.withgoogle.com/).
+Inspirada en los applets estadísticos de [Matthew Bognar, Ph.D. (University of Iowa)](https://mabognar.github.io/apps/) y fundamentada en las recomendaciones pedagógicas [GAISE de la American Statistical Association](https://www.amstat.org/docs/default-source/amstat-documents/gaisecollege_full.pdf), la aplicación combina un motor numérico de alta precisión con una interfaz clara y accesible (WCAG 2.1 AA), descrita en [`DESIGN.md`](DESIGN.md).
 
 ## ✨ Características Principales
 
@@ -23,7 +23,7 @@ Inspirada en los applets estadísticos de [Matthew Bognar, Ph.D. (University of 
 * **Desarrollo Matemático Paso a Paso en $\LaTeX$**: Desglosa la sustitución numérica exacta de los parámetros activos en la fórmula teórica e incluye la **aproximación Normal con corrección por continuidad de Yates ($\pm 0.5$)** para modelos discretos.
 * **Formulario Científico en Formato Cuaderno ($\LaTeX$ y ASCII)**: Renderizado tipográfico mediante [KaTeX](https://katex.org/) y motor matemático nativo sin conexión, con botón para copiar el código fuente $\LaTeX$ puro para diapositivas o exámenes, y modo alternativo en sintaxis ASCII para Python, R o Excel.
 * **Laboratorio de Momentos y Banda Empírica $2\sigma$**: Visualización del intervalo $\mu \pm 2\sigma$ ($\approx 95.45\%$ de masa), cálculo en vivo de Esperanza $E[X]$, Varianza $\text{Var}(X)$, Desviación Estándar $\sigma$, Coeficiente de Variación ($CV$) y medidores morfológicos de **Asimetría ($\gamma_1$)** y **Curtosis ($\gamma_2$)**.
-* **Diseño Ergonómico *Terra* y Soporte Bilingüe (`ES` / `EN`)**: Alternancia instantánea entre **Terra Natural** (modo claro estilo cuaderno botánico) y **Terra Nocturno** (modo oscuro OLED diseñado para reducir la fatiga visual), además de traducción completa entre Español e Inglés.
+* **Accesible y bilingüe (`ES` / `EN`)**: tema claro y oscuro, navegación completa con teclado, textos alternativos para las gráficas (resumen y tabla de valores), mensajes de error claros cuando un dato no es válido y traducción completa entre español e inglés.
 
 ## 📊 Catálogo de las 18 Distribuciones Incluidas
 
@@ -52,9 +52,9 @@ Inspirada en los applets estadísticos de [Matthew Bognar, Ph.D. (University of 
 
 1. **`Cálculo` (Calculadora Interactiva)**: Tarjeta de identidad del modelo, gráfica interactiva `PMF/PDF` y `CDF`, controles de parámetros con botones paso a paso (`−`/`+`) y deslizadores, selector de consulta (`P(X=x)`, `P(X≤x)`, `P(X≥x)`, `a≤X≤b`), buscador de percentiles inversos, tarjeta de resultado con colas acumuladas y acordeón desplegable de resolución paso a paso.
 2. **`Fórmulas` (Formulario Científico $\LaTeX$)**: Apunte teórico en formato cuaderno con ecuaciones renderizadas en $\LaTeX$, identidad combinatoria o de estandarización, código $\LaTeX$ copiable, recuadro de dominio (*"DONDE:"*) y lista de supuestos clave (*Regla de Oro*).
-3. **`Momentos` (Momentos Botánicos y Rango $2\sigma$)**: Gráfica de campana empírica con sombreado del intervalo $[\mu - 2\sigma, \mu + 2\sigma]$, tarjetas de Esperanza, Varianza, Desviación Estándar y Coeficiente de Variación, barras de Asimetría ($\gamma_1$) y Curtosis ($\gamma_2$), nota de control estadístico de procesos y exportación a `.csv` o $\LaTeX$.
+3. **`Momentos` (Momentos y rango $\mu \pm 2\sigma$)**: Gráfica de campana empírica con sombreado del intervalo $[\mu - 2\sigma, \mu + 2\sigma]$, tarjetas de Esperanza, Varianza, Desviación Estándar y Coeficiente de Variación, barras de Asimetría ($\gamma_1$) y Curtosis ($\gamma_2$), nota de control estadístico de procesos y exportación a `.csv` o $\LaTeX$.
 4. **`Catálogo` (Explorador de Modelos)**: Árbol de decisión desplegable para elegir la distribución adecuada según el problema, buscador en tiempo real y filtros por categoría (**Todas**, **Discretas**, **Continuas**, **Ingeniería & Inferencia**).
-5. **`Configuración` (`⚙️`)**: Selector de tema (**Terra Natural** vs. **Terra Nocturno**), contraste reforzado para fórmulas, selector de idioma (**Español** / **English**), precisión decimal configurable (**3, 4, 5 o 7 decimales**), interruptor de **Corrección de Yates ($\pm 0.5$)** y selector de formato de fórmulas (**Cuaderno $\LaTeX$** vs. **Código ASCII**).
+5. **`Configuración`**: tema (claro u oscuro), fórmulas en negrita, idioma (**Español** / **English**), decimales (**3, 4, 5 o 7**), **corrección de Yates ($\pm 0.5$)** y formato de fórmulas (**matemáticas** o **texto ASCII**).
 
 ## 🧮 Arquitectura del Motor Numérico
 
@@ -99,6 +99,9 @@ ProDist-App/
 ├── sw.js                       # Service worker: guarda la app para usarla sin internet
 ├── icons/                      # Iconos de la app web
 ├── vendor/katex/               # KaTeX incluido localmente (fórmulas LaTeX sin conexión)
+├── vendor/inter/               # Fuente Inter incluida localmente (licencia OFL)
+├── DESIGN.md                   # Sistema de diseño: colores, tipografía, espaciado y componentes
+├── tests/baseline.cjs          # Línea base de cálculos (node tests/baseline.cjs --check)
 ├── assets/                     # Icono y pantalla de inicio para generar los recursos Android
 ├── capacitor.config.json       # Configuración de Capacitor (empaqueta la web como app Android)
 ├── package.json                # Dependencias y scripts para compilar el APK

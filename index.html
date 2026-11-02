@@ -1093,7 +1093,7 @@
         <div class="settings-group">
           <div class="row-between">
             <span class="setting-title" id="setDecimalsTitle">Cifras Decimales</span>
-            <span class="chip num" id="setDecimalsPreview">Salida: 0.00001 (5 dec)</span>
+            <span class="chip num" id="setDecimalsPreview">Ejemplo: 0.12346</span>
           </div>
           <div class="segmented" role="group" aria-labelledby="setDecimalsTitle">
             <button class="seg-mode-btn" id="decBtn-3" onclick="setDecimals(3)" aria-pressed="false">3</button>
@@ -2792,6 +2792,7 @@
       document.getElementById('btnOpenSettings').setAttribute('aria-label', isEs ? 'Configuración' : 'Settings');
       document.getElementById('btnBackHeader').setAttribute('aria-label', isEs ? 'Volver' : 'Back');
       document.getElementById('btnShareSummary').setAttribute('aria-label', isEs ? 'Copiar resumen del cálculo' : 'Copy calculation summary');
+      document.getElementById('setDecimalsPreview').textContent = `${isEs ? 'Ejemplo' : 'Example'}: ${(0.123456789).toFixed(state.decimals)}`;
       updateQueryModeUI();
     }
 
