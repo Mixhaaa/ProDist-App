@@ -70,9 +70,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: ProbDist Pro v1.0.${{ github.run_number }}
+          name: ProbDist v1.0.${{ github.run_number }}
           body: |
-            APK de Android de ProbDist Pro.
+            APK de Android de ProbDist.
             Descarga **ProbDist-Pro.apk** en tu celular y ábrelo para instalarlo
             (Android pedirá permitir "instalar apps de origen desconocido").
           files: ProbDist-Pro.apk
