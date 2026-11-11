@@ -1,0 +1,25 @@
+# Runs the calculation checks on every push: results must match the saved baseline
+# and the moments must match numerical integration.
+name: Tests
+
+on:
+  push:
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+jobs:
+  calculations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Baseline (results identical)
+        run: node tests/baseline.cjs --check
+      - name: Moments vs numerical integration
+        run: node tests/moments.cjs

@@ -703,7 +703,7 @@
               <span class="eyebrow" id="calcModelKind">Modelo discreto</span>
               <div class="row">
                 <button class="btn btn-secondary btn-sm" id="btnToggleCDF" onclick="toggleChartFunction()" aria-pressed="false">Ver CDF</button>
-                <button class="btn-icon" onclick="copyCurrentSummary()" aria-label="Copiar resumen del cálculo" id="btnShareSummary">
+                <button class="btn-icon" onclick="shareCalculation()" aria-label="Compartir este cálculo" id="btnShareSummary">
                   <svg class="icon" aria-hidden="true"><use href="#i-share"/></svg>
                 </button>
               </div>
@@ -814,10 +814,41 @@
                   <span class="field-hint" id="lblInvProbSub">Escribe probabilidad (0 a 1) para hallar x</span>
                 </div>
                 <div class="stepper-group">
-                  <input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="num-input" id="inputInverseProb" value="0.601" aria-describedby="lblInvProbSub err_inv" onchange="onUserTypedInverseProb()" onkeydown="if (event.key === 'Enter') onUserTypedInverseProb()" />
+                  <input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="num-input" id="inputInverseProb" value="0.601" aria-describedby="lblInvProbSub err_inv" onchange="onUserTypedInverseProb()" />
                 </div>
               </div>
               <p class="field-error" id="err_inv" role="alert" hidden></p>
+            </div>
+          </section>
+
+          <section class="card" id="critCard" aria-labelledby="critTitle" hidden>
+            <h2 class="card-title" id="critTitle">Valores críticos</h2>
+            <p class="card-sub" id="critSub">Para pruebas de hipótesis e intervalos de confianza.</p>
+            <div class="field">
+              <div class="query-row">
+                <div class="query-label">
+                  <label for="critAlpha"><span class="x-sym">α</span> <span id="critAlphaLbl">Nivel de significancia</span></label>
+                  <span class="field-hint" id="critAlphaHint">Entre 0 y 1 (ej. 0.05)</span>
+                </div>
+                <div class="stepper-group">
+                  <input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="num-input" id="critAlpha" value="0.05" aria-describedby="critAlphaHint err_alpha" oninput="onCritAlphaTyped()" />
+                </div>
+              </div>
+              <p class="field-error" id="err_alpha" role="alert" hidden></p>
+            </div>
+            <div class="segmented" role="group" aria-labelledby="critTitle">
+              <button class="seg-mode-btn" id="crit-left" onclick="setCritTail('left')" aria-pressed="false">Izquierda</button>
+              <button class="seg-mode-btn" id="crit-right" onclick="setCritTail('right')" aria-pressed="false">Derecha</button>
+              <button class="seg-mode-btn active" id="crit-two" onclick="setCritTail('two')" aria-pressed="true">Dos colas</button>
+            </div>
+            <div class="tails-grid" id="critResults" aria-live="polite"></div>
+            <div class="panel" id="critPValue"></div>
+            <div class="switch-row">
+              <div class="switch-text">
+                <span class="switch-title" id="critShadeTitle">Sombrear en la gráfica</span>
+                <span class="field-hint" id="critShadeDesc">Marca la región de rechazo con rayas.</span>
+              </div>
+              <button class="toggle-switch" id="switchCrit" role="switch" aria-checked="false" aria-labelledby="critShadeTitle" onclick="toggleCritShade()"></button>
             </div>
           </section>
         </div>
@@ -1594,7 +1625,12 @@
           const g2 = gammaFunc(1 + 2 / p.alpha);
           const mean = p.beta * g1;
           const variance = p.beta * p.beta * (g2 - g1 * g1);
-          return { mean, variance, sd: Math.sqrt(variance), skew: 0.5, kurt: 0 };
+          const g3 = gammaFunc(1 + 3 / p.alpha);
+          const g4 = gammaFunc(1 + 4 / p.alpha);
+          const v = g2 - g1 * g1;
+          const skew = (g3 - 3 * g1 * g2 + 2 * g1 * g1 * g1) / Math.pow(v, 1.5);
+          const kurt = (g4 - 4 * g1 * g3 + 6 * g1 * g1 * g2 - 3 * Math.pow(g1, 4)) / (v * v) - 3;
+          return { mean, variance, sd: Math.sqrt(variance), skew, kurt };
         },
         plotRange: (p) => [0, p.beta * 2.8],
         subFormula: (x, p) => `F(${x}) = 1 - exp(-(${x}/${p.beta})^${p.alpha})`,
@@ -1786,7 +1822,7 @@
           const v = p.df;
           const mean = v > 1 ? 0 : NaN;
           const variance = v > 2 ? v / (v - 2) : Infinity;
-          return { mean, variance, sd: Math.sqrt(variance), skew: 0, kurt: v > 4 ? 6 / (v - 4) : Infinity };
+          return { mean, variance, sd: Math.sqrt(variance), skew: v > 3 ? 0 : NaN, kurt: v > 4 ? 6 / (v - 4) : (v > 2 ? Infinity : NaN) };
         },
         plotRange: () => [-4.5, 4.5],
         subFormula: (x, p) => `t = ${x} con ν = ${p.df} grados de libertad`,
@@ -1915,7 +1951,9 @@
           const d1 = p.df1, d2 = p.df2;
           const mean = d2 > 2 ? d2 / (d2 - 2) : NaN;
           const variance = d2 > 4 ? (2 * d2 * d2 * (d1 + d2 - 2)) / (d1 * Math.pow(d2 - 2, 2) * (d2 - 4)) : NaN;
-          return { mean, variance, sd: Math.sqrt(variance), skew: 1.2, kurt: 0 };
+          const skew = d2 > 6 ? ((2 * d1 + d2 - 2) * Math.sqrt(8 * (d2 - 4))) / ((d2 - 6) * Math.sqrt(d1 * (d1 + d2 - 2))) : NaN;
+          const kurt = d2 > 8 ? (12 * (d1 * (5 * d2 - 22) * (d1 + d2 - 2) + (d2 - 4) * Math.pow(d2 - 2, 2))) / (d1 * (d2 - 6) * (d2 - 8) * (d1 + d2 - 2)) : NaN;
+          return { mean, variance, sd: Math.sqrt(variance), skew, kurt };
         },
         plotRange: () => [0, 6],
         subFormula: (x, p) => `F = ${x} con (${p.df1}, ${p.df2}) GL`,
@@ -1976,7 +2014,10 @@
           const s = p.alpha + p.beta;
           const mean = p.alpha / s;
           const variance = (p.alpha * p.beta) / (s * s * (s + 1));
-          return { mean, variance, sd: Math.sqrt(variance), skew: 0, kurt: 0 };
+          const a = p.alpha, b = p.beta;
+          const skew = (2 * (b - a) * Math.sqrt(s + 1)) / ((s + 2) * Math.sqrt(a * b));
+          const kurt = (6 * ((a - b) * (a - b) * (s + 1) - a * b * (s + 2))) / (a * b * (s + 2) * (s + 3));
+          return { mean, variance, sd: Math.sqrt(variance), skew, kurt };
         },
         plotRange: () => [0, 1],
         subFormula: (x, p) => `f(${x}) en intervalo [0, 1] con α=${p.alpha}, β=${p.beta}`,
@@ -2163,7 +2204,13 @@
         moments: (p) => {
           const mean = p.n * (p.M / p.N);
           const variance = p.N > 1 ? p.n * (p.M / p.N) * (1 - p.M / p.N) * ((p.N - p.n) / (p.N - 1)) : 0;
-          return { mean, variance, sd: Math.sqrt(variance), skew: 0, kurt: 0 };
+          const N = p.N, K = p.M, n = p.n;
+          const core = n * K * (N - K) * (N - n);
+          const skew = (core > 0 && N > 2) ? ((N - 2 * K) * Math.sqrt(N - 1) * (N - 2 * n)) / (Math.sqrt(core) * (N - 2)) : NaN;
+          const kurt = (core > 0 && N > 3)
+            ? ((N - 1) * N * N * (N * (N + 1) - 6 * K * (N - K) - 6 * n * (N - n)) + 6 * core * (5 * N - 6)) / (core * (N - 2) * (N - 3))
+            : NaN;
+          return { mean, variance, sd: Math.sqrt(variance), skew, kurt };
         },
         plotRange: (p) => [Math.max(0, p.n - (p.N - p.M)), Math.min(p.n, p.M)],
         subFormula: (x, p) => `f(${x}) = [C(${p.M},${x}) · C(${p.N - p.M},${p.n - x})] / C(${p.N},${p.n})`,
@@ -2228,7 +2275,7 @@
         moments: (p) => {
           const mean = p.r / p.p;
           const variance = (p.r * (1 - p.p)) / (p.p * p.p);
-          return { mean, variance, sd: Math.sqrt(variance), skew: (2 - p.p) / Math.sqrt(p.r * (1 - p.p)), kurt: 0 };
+          return { mean, variance, sd: Math.sqrt(variance), skew: (2 - p.p) / Math.sqrt(p.r * (1 - p.p)), kurt: 6 / p.r + (p.p * p.p) / (p.r * (1 - p.p)) };
         },
         plotRange: (p) => {
           const m = p.r / p.p, sd = Math.sqrt((p.r * (1 - p.p)) / (p.p * p.p));
@@ -2296,7 +2343,7 @@
         moments: (p) => {
           const mean = (p.r * (1 - p.p)) / p.p;
           const variance = (p.r * (1 - p.p)) / (p.p * p.p);
-          return { mean, variance, sd: Math.sqrt(variance), skew: (2 - p.p) / Math.sqrt(p.r * (1 - p.p)), kurt: 0 };
+          return { mean, variance, sd: Math.sqrt(variance), skew: (2 - p.p) / Math.sqrt(p.r * (1 - p.p)), kurt: 6 / p.r + (p.p * p.p) / (p.r * (1 - p.p)) };
         },
         plotRange: (p) => {
           const m = (p.r * (1 - p.p)) / p.p, sd = Math.sqrt((p.r * (1 - p.p)) / (p.p * p.p));
@@ -2364,7 +2411,8 @@
           const s2 = p.sigma * p.sigma;
           const mean = Math.exp(p.mu + s2 / 2);
           const variance = (Math.exp(s2) - 1) * Math.exp(2 * p.mu + s2);
-          return { mean, variance, sd: Math.sqrt(variance), skew: 1.5, kurt: 2.0 };
+          const e = Math.exp(s2);
+          return { mean, variance, sd: Math.sqrt(variance), skew: (e + 2) * Math.sqrt(e - 1), kurt: Math.pow(e, 4) + 2 * Math.pow(e, 3) + 3 * e * e - 6 };
         },
         plotRange: (p) => [0, Math.exp(p.mu + 3 * p.sigma)],
         subFormula: (x, p) => `Z = (ln(${x}) - ${p.mu}) / ${p.sigma}`,
@@ -2424,7 +2472,10 @@
         moments: (p) => {
           const mean = p.alpha > 1 ? (p.alpha * p.m) / (p.alpha - 1) : Infinity;
           const variance = p.alpha > 2 ? (p.alpha * p.m * p.m) / (Math.pow(p.alpha - 1, 2) * (p.alpha - 2)) : Infinity;
-          return { mean, variance, sd: Math.sqrt(variance), skew: 2.0, kurt: 3.0 };
+          const al = p.alpha;
+          const skew = al > 3 ? ((2 * (1 + al)) / (al - 3)) * Math.sqrt((al - 2) / al) : NaN;
+          const kurt = al > 4 ? (6 * (al * al * al + al * al - 6 * al - 2)) / (al * (al - 3) * (al - 4)) : NaN;
+          return { mean, variance, sd: Math.sqrt(variance), skew, kurt };
         },
         plotRange: (p) => [p.m, p.m * 5],
         subFormula: (x, p) => `F(${x}) = 1 - (${p.m} / ${x})^${p.alpha}`,
@@ -2540,7 +2591,9 @@
       formulaContrast: true,
       formulaFormat: 'latex', // 'latex' or 'ascii'
       catalogFilter: 'all',
-      fieldErrors: {}
+      fieldErrors: {},
+      crit: { alpha: 0.05, tail: 'two', shade: false },
+      ready: false
     };
 
     // Saved user preferences (theme, language, decimals...) so they survive restarts
@@ -2594,7 +2647,11 @@
       return String(txt).replace(/^[^\p{L}\p{N}(]+/u, '').trim();
     }
 
+    const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const signedInputMode = () => IS_IOS ? 'text' : 'decimal';
+
     function initKeyboard() {
+      ['inputTargetX', 'inputTargetB'].forEach(id => document.getElementById(id).setAttribute('inputmode', signedInputMode()));
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && state.screen === 'settings') { e.preventDefault(); closeSettings(); }
       });
@@ -2611,6 +2668,9 @@
       renderCatalogCards();
       updateLanguageStrings();
       applySavedPrefs();
+      restoreCalculation();
+      state.ready = true;
+      saveCalculation();
       initKeyboard();
       window.onKatexReady = () => renderFormulasScreen(DISTRIBUTIONS[state.distId]);
       if (window.katex) window.onKatexReady();
@@ -2786,6 +2846,10 @@
       fmtAsciiTitle: ['Texto para copiar (ASCII)', 'Text to copy (ASCII)'], fmtAsciiDesc: ['Sintaxis lista para Python, R o Excel.', 'Syntax ready for Python, R or Excel.'],
       setAboutTitle: ['Acerca de', 'About'], setAboutBody: ['Inspirado en los applets de distribuciones de Matthew Bognar (University of Iowa).', 'Inspired by Matthew Bognar\'s distribution applets (University of Iowa).'],
       setExportBtn: ['Exportar cálculo (CSV)', 'Export calculation (CSV)'], setResetBtn: ['Restablecer valores por defecto', 'Restore defaults'],
+      critTitle: ['Valores críticos', 'Critical values'], critSub: ['Para pruebas de hipótesis e intervalos de confianza.', 'For hypothesis tests and confidence intervals.'],
+      critAlphaLbl: ['Nivel de significancia', 'Significance level'], critAlphaHint: ['Entre 0 y 1 (ej. 0.05)', 'Between 0 and 1 (e.g. 0.05)'],
+      'crit-left': ['Izquierda', 'Left'], 'crit-right': ['Derecha', 'Right'], 'crit-two': ['Dos colas', 'Two tails'],
+      critShadeTitle: ['Sombrear en la gráfica', 'Shade on the chart'], critShadeDesc: ['Marca la región de rechazo con rayas.', 'Marks the rejection region with stripes.'],
       resBlockedText: ['Corrige los datos marcados en rojo para ver el resultado.', 'Fix the fields marked in red to see the result.']
     };
 
@@ -2802,7 +2866,7 @@
       document.querySelector('.tabs').setAttribute('aria-label', isEs ? 'Secciones' : 'Sections');
       document.getElementById('btnOpenSettings').setAttribute('aria-label', isEs ? 'Configuración' : 'Settings');
       document.getElementById('btnBackHeader').setAttribute('aria-label', isEs ? 'Volver' : 'Back');
-      document.getElementById('btnShareSummary').setAttribute('aria-label', isEs ? 'Copiar resumen del cálculo' : 'Copy calculation summary');
+      document.getElementById('btnShareSummary').setAttribute('aria-label', isEs ? 'Compartir este cálculo' : 'Share this calculation');
       document.getElementById('setDecimalsPreview').textContent = `${isEs ? 'Ejemplo' : 'Example'}: ${(0.123456789).toFixed(state.decimals)}`;
       updateQueryModeUI();
     }
@@ -2920,7 +2984,7 @@
 
     function showFieldError(key, msg) {
       const el = document.getElementById(`err_${key}`);
-      const input = document.getElementById(key === 'x' ? 'inputTargetX' : key === 'b' ? 'inputTargetB' : key === 'inv' ? 'inputInverseProb' : `pnum_${key}`);
+      const input = document.getElementById(key === 'x' ? 'inputTargetX' : key === 'b' ? 'inputTargetB' : key === 'inv' ? 'inputInverseProb' : key === 'alpha' ? 'critAlpha' : `pnum_${key}`);
       if (el) {
         el.hidden = !msg;
         el.innerHTML = msg ? `${ALERT_ICON}<span>${msg}</span>` : '';
@@ -2935,7 +2999,7 @@
 
     // Shows "fix the marked data" instead of a stale result. Returns true when blocked.
     function renderBlockedState() {
-      const blocking = Object.keys(state.fieldErrors || {}).filter(k => k !== 'inv');
+      const blocking = Object.keys(state.fieldErrors || {}).filter(k => k !== 'inv' && k !== 'alpha');
       const blocked = blocking.length > 0;
       const card = document.getElementById('resBlockedMsg');
       if (card) card.closest('section').classList.toggle('is-blocked', blocked);
@@ -2991,7 +3055,7 @@
             <label class="field-label" for="pnum_${p.key}"><span class="field-sym">${p.symbol}</span>${p.name[state.lang]}</label>
             <div class="stepper-group">
               <button type="button" class="stepper-btn" id="pdec_${p.key}" aria-label="${isEs ? 'Disminuir' : 'Decrease'} ${p.symbol}">−</button>
-              <input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="param-num-input num-input" id="pnum_${p.key}" value="${val}" aria-describedby="hint_${p.key} err_${p.key}" />
+              <input type="text" inputmode="${(rule.gt0 || rule.int || rule.prob) ? 'decimal' : signedInputMode()}" autocomplete="off" spellcheck="false" class="param-num-input num-input" id="pnum_${p.key}" value="${val}" aria-describedby="hint_${p.key} err_${p.key}" />
               <button type="button" class="stepper-btn" id="pinc_${p.key}" aria-label="${isEs ? 'Aumentar' : 'Increase'} ${p.symbol}">+</button>
             </div>
           </div>
@@ -3043,10 +3107,48 @@
       drawMainCalcChart();
     }
 
+    // Step for the − / + buttons: 1 for discrete models, about 1/40 of the plotted range otherwise
+    function xStep(d) {
+      if (d.type === 'discrete') return 1;
+      const [lo, hi] = d.plotRange(state.params);
+      const raw = (hi - lo) / 40;
+      if (!(raw > 0) || !Number.isFinite(raw)) return 0.25;
+      const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+      const r = raw / mag;
+      return mag * (r < 2 ? 1 : r < 5 ? 2 : 5);
+    }
+
+    // Axis label that stays readable for tiny and huge ranges
+    function fmtTick(v, span) {
+      if (v === 0) return '0';
+      const a = Math.abs(v);
+      if (a >= 1e7 || a < 1e-4) return v.toExponential(1).replace('e+', 'e');
+      if (span >= 50) return v.toFixed(0);
+      if (span >= 5) return v.toFixed(1);
+      if (span >= 0.5) return v.toFixed(2);
+      return String(Number(v.toPrecision(2)));
+    }
+
+    // One-line description of how the current query is obtained
+    function queryExplain(d, p, x, b) {
+      const lo = Math.min(x, b), hi = Math.max(x, b);
+      if (d.type === 'discrete') {
+        const k0 = d.plotRange(p)[0];
+        if (state.queryMode === 'eq') return d.subFormula(x, p);
+        if (state.queryMode === 'le') return `P(X ≤ ${x}) = f(${k0}) + … + f(${x})`;
+        if (state.queryMode === 'ge') return `P(X ≥ ${x}) = 1 − P(X ≤ ${x - 1})`;
+        return `P(${lo} ≤ X ≤ ${hi}) = P(X ≤ ${hi}) − P(X ≤ ${lo - 1})`;
+      }
+      if (state.queryMode === 'eq') return `f(${x})`;
+      if (state.queryMode === 'le') return `P(X ≤ ${x}) = F(${x})`;
+      if (state.queryMode === 'ge') return `P(X ≥ ${x}) = 1 − F(${x})`;
+      return `P(${lo} ≤ X ≤ ${hi}) = F(${hi}) − F(${lo})`;
+    }
+
     function stepX(dir) {
       const d = DISTRIBUTIONS[state.distId];
-      const step = d.type === 'discrete' ? 1 : 0.25;
-      let nextX = Number((state.x + dir * step).toFixed(4));
+      const step = xStep(d);
+      let nextX = Number((state.x + dir * step).toPrecision(12));
       if (d.type === 'discrete') {
         const [minK, maxK] = d.plotRange(state.params);
         nextX = Math.max(minK, Math.min(maxK, Math.round(nextX)));
@@ -3059,8 +3161,8 @@
 
     function stepB(dir) {
       const d = DISTRIBUTIONS[state.distId];
-      const step = d.type === 'discrete' ? 1 : 0.25;
-      state.b = Number((state.b + dir * step).toFixed(4));
+      const step = xStep(d);
+      state.b = Number((state.b + dir * step).toPrecision(12));
       document.getElementById('inputTargetB').value = state.b;
       showFieldError('b', '');
       recalculateAll();
@@ -3098,32 +3200,188 @@
           : `The probability must be between 0 and 1, exclusive (e.g. 0.95)${rawP ? `. You typed ${rawP}` : ''}.`);
         return;
       }
-      if (Object.keys(state.fieldErrors || {}).some(k => k !== 'inv')) return;
+      if (Object.keys(state.fieldErrors || {}).some(k => k !== 'inv' && k !== 'alpha')) return;
       showFieldError('inv', '');
       const d = DISTRIBUTIONS[state.distId];
       const p = state.params;
-      if (state.queryMode === 'eq' || state.queryMode === 'interval') {
+      // The field is defined as P(X ≤ x) = P, so the query switches to the cumulative mode
+      if (state.queryMode !== 'le') {
         state.queryMode = 'le';
         updateQueryModeUI();
       }
-      const targetCDF = state.queryMode === 'le' ? pVal : (1 - pVal);
+      const targetCDF = pVal;
 
       if (d.type === 'continuous' && d.inv) {
-        state.x = Number(d.inv(targetCDF, p).toFixed(4));
+        // 4 decimals as before, more when the scale is tiny (e.g. Exp(1000))
+        const q = d.inv(targetCDF, p);
+        const digits = (q === 0 || Math.abs(q) >= 0.01) ? 4 : Math.min(12, 5 - Math.floor(Math.log10(Math.abs(q))));
+        state.x = Number(q.toFixed(digits));
       } else {
-        const [minK, maxK] = d.plotRange(p);
-        let bestK = minK;
-        for (let k = minK; k <= maxK * 2; k++) {
-          if (d.cdf(k, p) >= targetCDF) {
-            bestK = k;
-            break;
-          }
+        // Smallest k with P(X ≤ k) ≥ P: grow the upper bound, then bisect (the CDF is monotone)
+        const minK = d.plotRange(p)[0];
+        let lo = minK, hi = Math.max(minK + 1, d.plotRange(p)[1]);
+        while (d.cdf(hi, p) < targetCDF && hi < MAX_SAFE_X) hi = hi * 2 + 1;
+        while (lo < hi) {
+          const mid = Math.floor((lo + hi) / 2);
+          if (d.cdf(mid, p) >= targetCDF) hi = mid; else lo = mid + 1;
         }
-        state.x = bestK;
+        state.x = lo;
       }
       document.getElementById('inputTargetX').value = state.x;
       recalculateAll();
       showToast(state.lang === 'es' ? `Percentil calculado: x = ${state.x}` : `Computed quantile: x = ${state.x}`);
+    }
+
+    // =========================================================================
+    // CRITICAL VALUES (continuous distributions): quantiles for a significance
+    // level α, plus the tail areas (p-values) of the current x.
+    // =========================================================================
+    function criticalValues(d, p) {
+      if (d.type !== 'continuous' || !d.inv) return null;
+      const a = state.crit.alpha;
+      if (!(a > 0 && a < 1)) return null;
+      if (state.crit.tail === 'left') return { lower: d.inv(a, p) };
+      if (state.crit.tail === 'right') return { upper: d.inv(1 - a, p) };
+      return { lower: d.inv(a / 2, p), upper: d.inv(1 - a / 2, p) };
+    }
+
+    function critSummaryText(d, p) {
+      const cv = state.crit.shade ? criticalValues(d, p) : null;
+      if (!cv) return '';
+      const isEs = state.lang === 'es';
+      const vals = [cv.lower, cv.upper].filter(v => v !== undefined).map(v => v.toFixed(state.decimals)).join(isEs ? ' y ' : ' and ');
+      return isEs ? ` Región de rechazo rayada, valores críticos ${vals}.` : ` Rejection region hatched, critical values ${vals}.`;
+    }
+
+    function renderCritical(d, p) {
+      const card = document.getElementById('critCard');
+      const applies = d.type === 'continuous' && !!d.inv;
+      card.hidden = !applies;
+      if (!applies) return;
+      const isEs = state.lang === 'es';
+      const dec = state.decimals;
+      const a = state.crit.alpha;
+      ['left', 'right', 'two'].forEach(t => {
+        const btn = document.getElementById(`crit-${t}`);
+        btn.classList.toggle('active', state.crit.tail === t);
+        btn.setAttribute('aria-pressed', String(state.crit.tail === t));
+      });
+      document.getElementById('switchCrit').setAttribute('aria-checked', String(state.crit.shade));
+      const cv = criticalValues(d, p);
+      const box = (label, value, sub) => `<div class="tail-box"><span class="label-sm">${label}</span><span class="tail-val">${value}</span><span class="label-sm">${sub}</span></div>`;
+      const fmtA = (v) => String(Number(v.toPrecision(6)));
+      const fmtC = (v) => v.toFixed(dec).replace('-', '−');
+      let html = '';
+      if (cv) {
+        if (cv.lower !== undefined) html += box(isEs ? 'Crítico inferior' : 'Lower critical', fmtC(cv.lower), `P(X ≤ x) = ${fmtA(state.crit.tail === 'two' ? a / 2 : a)}`);
+        if (cv.upper !== undefined) html += box(isEs ? 'Crítico superior' : 'Upper critical', fmtC(cv.upper), `P(X ≥ x) = ${fmtA(state.crit.tail === 'two' ? a / 2 : a)}`);
+      }
+      document.getElementById('critResults').innerHTML = html;
+
+      // Tail areas of the current x (what a p-value is for an observed statistic)
+      const F = d.cdf(state.x, p);
+      const left = F, right = Math.max(0, 1 - F), two = Math.min(1, 2 * Math.min(left, right));
+      document.getElementById('critPValue').innerHTML = `
+        <strong>${isEs ? `Áreas de cola para x = ${state.x}` : `Tail areas for x = ${state.x}`}</strong>
+        <span class="label-sm num">${isEs ? 'Izquierda' : 'Left'} P(X ≤ x) = ${left.toFixed(dec)} · ${isEs ? 'Derecha' : 'Right'} P(X ≥ x) = ${right.toFixed(dec)}</span>
+        <span class="label-sm num">${isEs ? 'Dos colas' : 'Two tails'} 2·min = ${two.toFixed(dec)}</span>`;
+    }
+
+    function onCritAlphaTyped() {
+      const raw = document.getElementById('critAlpha').value.trim();
+      const parsed = parseTyped(raw);
+      const isEs = state.lang === 'es';
+      if (parsed.empty || parsed.bad || !(parsed.value > 0 && parsed.value < 1)) {
+        showFieldError('alpha', isEs
+          ? `α debe estar entre 0 y 1, sin incluirlos (por ejemplo 0.05)${raw ? `. Escribiste ${raw}` : ''}.`
+          : `α must be between 0 and 1, exclusive (e.g. 0.05)${raw ? `. You typed ${raw}` : ''}.`);
+        state.crit.alpha = NaN;
+      } else {
+        showFieldError('alpha', '');
+        state.crit.alpha = parsed.value;
+      }
+      recalculateAll();
+    }
+
+    function setCritTail(tail) {
+      state.crit.tail = tail;
+      recalculateAll();
+    }
+
+    function toggleCritShade() {
+      state.crit.shade = !state.crit.shade;
+      recalculateAll();
+    }
+
+    // =========================================================================
+    // REMEMBER & SHARE: the current calculation is saved on the device and
+    // mirrored in the address (?d=normal&mu=0&sigma=1&x=1.96&m=le) so a link
+    // reopens exactly the same exercise.
+    // =========================================================================
+    const CALC_KEY = 'probdist-calc-v1';
+    const PUBLIC_URL = 'https://mixhaaa.github.io/ProDist-App/';
+    const onWeb = () => location.protocol.startsWith('http') && !window.Capacitor;
+
+    function calcQuery() {
+      const q = new URLSearchParams();
+      q.set('d', state.distId);
+      Object.entries(state.params).forEach(([k, v]) => q.set(k, v));
+      q.set('x', state.x);
+      if (state.queryMode === 'interval') q.set('xb', state.b);
+      q.set('m', state.queryMode);
+      return q.toString();
+    }
+
+    function saveCalculation() {
+      if (!state.ready) return;
+      try {
+        localStorage.setItem(CALC_KEY, JSON.stringify({ q: calcQuery(), crit: state.crit }));
+        if (onWeb()) history.replaceState(null, '', `${location.pathname}?${calcQuery()}`);
+      } catch (e) { /* storage or history unavailable: nothing is remembered */ }
+    }
+
+    // Reopens the calculation from the link, or else the last one used on this device.
+    // Values go through the same validation as typed input.
+    function restoreCalculation() {
+      let query = location.search.replace(/^\?/, '');
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(CALC_KEY)); } catch (e) { saved = null; }
+      if (!new URLSearchParams(query).get('d') && saved && typeof saved.q === 'string') query = saved.q;
+      const q = new URLSearchParams(query);
+      const d = DISTRIBUTIONS[q.get('d')];
+      if (saved && saved.crit && ['left', 'right', 'two'].includes(saved.crit.tail) && saved.crit.alpha > 0 && saved.crit.alpha < 1) {
+        state.crit = { alpha: saved.crit.alpha, tail: saved.crit.tail, shade: !!saved.crit.shade };
+        document.getElementById('critAlpha').value = String(saved.crit.alpha);
+      }
+      if (!d) return;
+      selectDistribution(d.id, true);
+      const mode = q.get('m');
+      if (['eq', 'le', 'ge', 'interval'].includes(mode)) state.queryMode = mode;
+      updateQueryModeUI();
+      d.params.forEach(pm => { if (q.get(pm.key) !== null) document.getElementById(`pnum_${pm.key}`).value = q.get(pm.key); });
+      if (q.get('x') !== null) document.getElementById('inputTargetX').value = q.get('x');
+      if (q.get('xb') !== null) document.getElementById('inputTargetB').value = q.get('xb');
+      validateParams();
+      onUserTypedX();
+    }
+
+    function summaryText() {
+      const d = DISTRIBUTIONS[state.distId];
+      const m = d.moments(state.params);
+      const isEs = state.lang === 'es';
+      const fx = (v) => Number.isNaN(v) ? (isEs ? 'no definida' : 'undefined') : (Number.isFinite(v) ? v.toFixed(state.decimals) : '∞');
+      return `${d.name[state.lang]} (${d.liveNotation(state.params)})\n${document.getElementById('resHeroLabel').textContent} = ${state.prob.toFixed(state.decimals)}\n${isEs ? 'Media' : 'Mean'} = ${fx(m.mean)} | ${isEs ? 'Varianza' : 'Variance'} = ${fx(m.variance)} | σ = ${fx(m.sd)}`;
+    }
+
+    function shareCalculation() {
+      const isEs = state.lang === 'es';
+      const url = `${onWeb() ? location.origin + location.pathname : PUBLIC_URL}?${calcQuery()}`;
+      const text = summaryText();
+      if (navigator.share) {
+        navigator.share({ title: 'ProbDist', text, url }).catch(() => { /* cancelled */ });
+      } else {
+        copyToClipboardSafe(`${text}\n${url}`, isEs ? 'Resumen y enlace copiados' : 'Summary and link copied');
+      }
     }
 
     function toggleStepAccordion() {
@@ -3207,7 +3465,7 @@
       document.getElementById('resMainPct').textContent = (d.type === 'continuous' && state.queryMode === 'eq')
         ? (isEs ? '(densidad)' : '(density)')
         : `(${(mainProb * 100).toFixed(2)}%)`;
-      document.getElementById('resSubstitutedFormula').textContent = d.subFormula(x, p);
+      document.getElementById('resSubstitutedFormula').textContent = queryExplain(d, p, x, b);
       document.getElementById('inputInverseProb').value = Number(leftTail.toFixed(4));
       showFieldError('inv', '');
 
@@ -3221,7 +3479,7 @@
 
       // Moments
       const m = d.moments(p);
-      const fmtM = (v) => (v === undefined || Number.isNaN(v)) ? 'N/A' : (!Number.isFinite(v) ? '∞' : v.toFixed(dec));
+      const fmtM = (v) => (v === undefined || Number.isNaN(v)) ? (isEs ? 'No definido' : 'Undefined') : (!Number.isFinite(v) ? '∞' : v.toFixed(dec));
       document.getElementById('qValMean').textContent = fmtM(m.mean);
       document.getElementById('qValVar').textContent = fmtM(m.variance);
       document.getElementById('qValSD').textContent = fmtM(m.sd);
@@ -3239,6 +3497,12 @@
       }[state.queryMode];
       document.getElementById('calcRegionBadge').textContent = `${shortQuery} = ${mainProb.toFixed(dec)}`;
       document.getElementById('chartQuickMoments').textContent = `μ = ${Number.isFinite(m.mean) ? m.mean.toFixed(2) : '∞'}, σ = ${Number.isFinite(m.sd) ? m.sd.toFixed(2) : '∞'}`;
+
+      renderCritical(d, p);
+      saveCalculation();
+      document.getElementById('chartTouchHint').textContent = d.type === 'discrete'
+        ? (isEs ? 'Toca una barra para elegir x' : 'Tap a bar to choose x')
+        : (isEs ? 'Mueve x con − / + o con ← →' : 'Move x with − / + or ← →');
 
       // Step-by-Step Accordion & Didactic Tip
       renderStepByStepDevelopment(d, p, m, x, b, mainProb);
@@ -3272,7 +3536,7 @@
         <div class="math-latex step-formula" tabindex="0" role="math">
           ${state.formulaFormat === 'latex' ? d.latex.pmfHTML : `<code class="step-line">${d.latex.ascii}</code>`}
         </div>
-        <p class="step-line">2. ${isEs ? 'Sustitución numérica' : 'Numerical substitution'}: <strong>${d.subFormula(x, p)}</strong></p>
+        <p class="step-line">2. ${isEs ? 'Sustitución numérica' : 'Numerical substitution'}: <strong>${state.queryMode === 'eq' || d.type === 'continuous' ? d.subFormula(x, p) : queryExplain(d, p, x, b)}</strong></p>
         <p class="step-line step-line-result">3. ${isEs ? 'Resultado' : 'Result'} = ${mainProb.toFixed(state.decimals)} (${(mainProb * 100).toFixed(2)}%)</p>
         ${yatesNote}
       `;
@@ -3284,13 +3548,14 @@
       if (d.id === 'binomial') {
         const np = p.n * p.p;
         const npq = p.n * p.p * (1 - p.p);
-        const ok = np >= 5 && npq >= 5;
+        const nq = p.n * (1 - p.p);
+        const ok = np >= 5 && nq >= 5;
         const cmp = (v) => v >= 5 ? '≥ 5' : '< 5';
         bodyEl.innerHTML = isEs
-          ? `<strong>n·p = ${np.toFixed(2)}</strong> (${cmp(np)}) y <strong>n·p·(1−p) = ${npq.toFixed(2)}</strong> (${cmp(npq)}). ${ok
+          ? `<strong>n·p = ${np.toFixed(2)}</strong> (${cmp(np)}) y <strong>n·(1−p) = ${nq.toFixed(2)}</strong> (${cmp(nq)}). ${ok
               ? `Como ambos son ≥ 5, la distribución es lo bastante simétrica para aproximarse con <strong>N(${m.mean.toFixed(2)}, ${m.sd.toFixed(2)})</strong>.`
               : `Como no ambos son ≥ 5, conviene usar la fórmula exacta en lugar de aproximar con <strong>N(${m.mean.toFixed(2)}, ${m.sd.toFixed(2)})</strong>.`}`
-          : `<strong>n·p = ${np.toFixed(2)}</strong> (${cmp(np)}) and <strong>n·p·(1−p) = ${npq.toFixed(2)}</strong> (${cmp(npq)}). ${ok
+          : `<strong>n·p = ${np.toFixed(2)}</strong> (${cmp(np)}) and <strong>n·(1−p) = ${nq.toFixed(2)}</strong> (${cmp(nq)}). ${ok
               ? `Since both are ≥ 5, the model is symmetric enough to be approximated by <strong>N(${m.mean.toFixed(2)}, ${m.sd.toFixed(2)})</strong>.`
               : `Since they are not both ≥ 5, use the exact formula rather than <strong>N(${m.mean.toFixed(2)}, ${m.sd.toFixed(2)})</strong>.`}`;
       } else {
@@ -3387,7 +3652,8 @@
         </div>
       `).join('');
 
-      const fmt = (v) => (v === undefined || Number.isNaN(v)) ? 'N/A' : (!Number.isFinite(v) ? '∞' : v.toFixed(dec));
+      const UNDEF = isEs ? 'No definido' : 'Undefined';
+      const fmt = (v) => (v === undefined || Number.isNaN(v)) ? UNDEF : (!Number.isFinite(v) ? '∞' : v.toFixed(dec));
       document.getElementById('momCardMeanVal').textContent = fmt(m.mean);
       document.getElementById('momCardVarVal').textContent = fmt(m.variance);
       document.getElementById('momCardSDVal').textContent = fmt(m.sd);
@@ -3396,44 +3662,47 @@
       const cv = (Number.isFinite(m.mean) && m.mean !== 0 && Number.isFinite(m.sd))
         ? (m.sd / Math.abs(m.mean)) * 100
         : NaN;
-      document.getElementById('momCardCVVal').textContent = Number.isFinite(cv) ? `${cv.toFixed(2)}%` : 'N/A';
+      document.getElementById('momCardCVVal').textContent = Number.isFinite(cv) ? `${cv.toFixed(2)}%` : UNDEF;
       document.getElementById('momCardCVSub').textContent = !Number.isFinite(cv)
-        ? 'N/A'
+        ? '—'
         : (cv < 20 ? (isEs ? 'Baja' : 'Low') : (cv < 50 ? (isEs ? 'Moderada' : 'Moderate') : (isEs ? 'Alta' : 'High')));
 
       const lo2 = Number.isFinite(m.mean) && Number.isFinite(m.sd) ? (m.mean - 2 * m.sd) : NaN;
       const hi2 = Number.isFinite(m.mean) && Number.isFinite(m.sd) ? (m.mean + 2 * m.sd) : NaN;
       document.getElementById('momTwoSigmaInterval').textContent = Number.isFinite(lo2)
         ? `[${lo2.toFixed(2)}, ${hi2.toFixed(2)}]`
-        : 'N/A';
+        : UNDEF;
 
       // Skewness & Kurtosis
-      const sk = Number.isFinite(m.skew) ? m.skew : 0;
-      const ku = Number.isFinite(m.kurt) ? m.kurt : 0;
       const signed = (v) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(dec);
-      document.getElementById('momSkewVal').textContent = signed(sk);
-      document.getElementById('momKurtVal').textContent = signed(ku);
+      const shape = (v) => Number.isFinite(v) ? signed(v) : (v === Infinity ? '∞' : UNDEF);
+      const noMoment = isEs ? 'No existe para estos parámetros (colas demasiado pesadas).' : 'Does not exist for these parameters (tails too heavy).';
+      const sk = m.skew, ku = m.kurt;
+      document.getElementById('momSkewVal').textContent = shape(sk);
+      document.getElementById('momKurtVal').textContent = shape(ku);
 
-      const skewPct = Math.min(45, Math.abs(sk) * 20);
-      const skewBar = document.getElementById('momSkewBar');
-      skewBar.style.width = `${Math.max(4, skewPct)}%`;
-      skewBar.style.left = sk >= 0 ? '50%' : `${50 - skewPct}%`;
+      const setBar = (id, v, scale) => {
+        const bar = document.getElementById(id);
+        if (!Number.isFinite(v)) { bar.style.width = '0'; return; }
+        const pct = Math.min(45, Math.abs(v) * scale);
+        bar.style.width = `${Math.max(4, pct)}%`;
+        bar.style.left = v >= 0 ? '50%' : `${50 - pct}%`;
+      };
+      setBar('momSkewBar', sk, 20);
+      setBar('momKurtBar', ku, 10);
 
-      document.getElementById('momSkewDesc').textContent = Math.abs(sk) < 0.05
-        ? (isEs ? 'Distribución perfectamente simétrica (γ₁ ≈ 0)' : 'Symmetric distribution (γ₁ ≈ 0)')
-        : (sk > 0
-            ? (isEs ? 'Asimetría positiva (cola extendida hacia la derecha)' : 'Positive skew (right-tailed)')
-            : (isEs ? 'Asimetría negativa (cola extendida hacia la izquierda)' : 'Negative skew (left-tailed)'));
-
-      const kurtPct = Math.min(45, Math.abs(ku) * 10);
-      const kurtBar = document.getElementById('momKurtBar');
-      kurtBar.style.width = `${Math.max(4, kurtPct)}%`;
-      kurtBar.style.left = ku >= 0 ? '50%' : `${50 - kurtPct}%`;
-      document.getElementById('momKurtDesc').textContent = Math.abs(ku) < 0.05
-        ? (isEs ? 'Mesocúrtica (colas como las de la Normal, γ₂ ≈ 0)' : 'Mesokurtic (Normal-like tails, γ₂ ≈ 0)')
-        : (ku > 0
-            ? (isEs ? 'Leptocúrtica (colas más pesadas que la Normal)' : 'Leptokurtic (heavier tails than the Normal)')
-            : (isEs ? 'Platicúrtica (colas más ligeras que la Normal)' : 'Platykurtic (lighter tails than the Normal)'));
+      document.getElementById('momSkewDesc').textContent = !Number.isFinite(sk) ? noMoment
+        : Math.abs(sk) < 0.05
+          ? (isEs ? 'Distribución simétrica (γ₁ ≈ 0)' : 'Symmetric distribution (γ₁ ≈ 0)')
+          : (sk > 0
+              ? (isEs ? 'Asimetría positiva (cola extendida hacia la derecha)' : 'Positive skew (right-tailed)')
+              : (isEs ? 'Asimetría negativa (cola extendida hacia la izquierda)' : 'Negative skew (left-tailed)'));
+      document.getElementById('momKurtDesc').textContent = !Number.isFinite(ku) ? noMoment
+        : Math.abs(ku) < 0.05
+          ? (isEs ? 'Mesocúrtica (colas como las de la Normal, γ₂ ≈ 0)' : 'Mesokurtic (Normal-like tails, γ₂ ≈ 0)')
+          : (ku > 0
+              ? (isEs ? 'Leptocúrtica (colas más pesadas que la Normal)' : 'Leptokurtic (heavier tails than the Normal)')
+              : (isEs ? 'Platicúrtica (colas más ligeras que la Normal)' : 'Platykurtic (lighter tails than the Normal)'));
       document.getElementById('momChartSummary').textContent = Number.isFinite(lo2)
         ? (isEs ? `Curva de referencia con la banda μ ± 2σ entre ${lo2.toFixed(2)} y ${hi2.toFixed(2)}, centrada en μ = ${m.mean.toFixed(2)}.` : `Reference curve with the μ ± 2σ band from ${lo2.toFixed(2)} to ${hi2.toFixed(2)}, centered at μ = ${m.mean.toFixed(2)}.`)
         : (isEs ? 'La banda μ ± 2σ no está definida para estos parámetros.' : 'The μ ± 2σ band is not defined for these parameters.');
@@ -3638,6 +3907,20 @@
             out += `<path d="M ${toX(subPts[0].x).toFixed(1)},${baseY} ${subPath} L ${toX(subPts[subPts.length - 1].x).toFixed(1)},${baseY} Z" fill="${C.sel}" fill-opacity="0.30"/>`;
           }
         }
+        const cv = (!isCDF && state.crit.shade) ? criticalValues(d, p) : null;
+        if (cv) {
+          out += `<defs><pattern id="critHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="var(--color-text)" stroke-width="2"/></pattern></defs>`;
+          const region = (lo, hi) => {
+            const sub = pts.filter(pt => pt.x >= lo && pt.x <= hi);
+            if (sub.length < 2) return '';
+            return `<path d="M ${toX(sub[0].x).toFixed(1)},${baseY} ${sub.map(pt => `L ${toX(pt.x).toFixed(1)},${toY(pt.y).toFixed(1)}`).join(' ')} L ${toX(sub[sub.length - 1].x).toFixed(1)},${baseY} Z" fill="url(#critHatch)" fill-opacity="0.8"/>`;
+          };
+          const mark = (c) => (c >= minX && c <= maxX)
+            ? `<line x1="${toX(c).toFixed(1)}" y1="${padT - 6}" x2="${toX(c).toFixed(1)}" y2="${baseY}" stroke="var(--color-text)" stroke-width="1.5"/>`
+            : '';
+          if (cv.lower !== undefined) out += region(minX, cv.lower) + mark(cv.lower);
+          if (cv.upper !== undefined) out += region(cv.upper, maxX) + mark(cv.upper);
+        }
         out += `<path d="${fullPath}" fill="none" stroke="${C.line}" stroke-width="2.2" stroke-linecap="round"/>`;
 
         if (state.x >= minX && state.x <= maxX) {
@@ -3648,7 +3931,7 @@
         }
         for (let i = 0; i <= 4; i++) {
           const xv = minX + ((maxX - minX) * i) / 4;
-          out += `<text x="${toX(xv).toFixed(1)}" y="${baseY + 17}" text-anchor="${i === 0 ? 'start' : i === 4 ? 'end' : 'middle'}" class="chart-axis">${xv.toFixed(1)}</text>`;
+          out += `<text x="${toX(xv).toFixed(1)}" y="${baseY + 17}" text-anchor="${i === 0 ? 'start' : i === 4 ? 'end' : 'middle'}" class="chart-axis">${fmtTick(xv, maxX - minX)}</text>`;
         }
         for (let i = 0; i <= 20; i++) {
           const xv = minX + ((maxX - minX) * i) / 20;
@@ -3666,8 +3949,8 @@
         ? (isEs ? ` Máximo ${peak.v.toFixed(3)} en x = ${d.type === 'discrete' ? peak.x : peak.x.toFixed(2)}.` : ` Peak ${peak.v.toFixed(3)} at x = ${d.type === 'discrete' ? peak.x : peak.x.toFixed(2)}.`)
         : '';
       document.getElementById('chartSummary').textContent = isEs
-        ? `Gráfica ${kind} de ${d.liveNotation(p)}, x de ${rLo} a ${rHi}.${peakTxt} Valor seleccionado x = ${state.x}. Usa las flechas izquierda y derecha para cambiar x.`
-        : `${kind} chart of ${d.liveNotation(p)}, x from ${rLo} to ${rHi}.${peakTxt} Selected x = ${state.x}. Use the left and right arrow keys to change x.`;
+        ? `Gráfica ${kind} de ${d.liveNotation(p)}, x de ${rLo} a ${rHi}.${peakTxt} Valor seleccionado x = ${state.x}.${critSummaryText(d, p)} Usa las flechas izquierda y derecha para cambiar x.`
+        : `${kind} chart of ${d.liveNotation(p)}, x from ${rLo} to ${rHi}.${peakTxt} Selected x = ${state.x}.${critSummaryText(d, p)} Use the left and right arrow keys to change x.`;
       const fLabel = d.type === 'discrete' ? 'P(X = x)' : 'f(x)';
       document.getElementById('chartDataTable').innerHTML = `
         <caption class="sr-only">${isEs ? 'Valores de la gráfica' : 'Chart values'}</caption>
@@ -3690,8 +3973,13 @@
       const d = DISTRIBUTIONS[state.distId];
       const p = state.params;
       const m = d.moments(p);
-      const mu = Number.isFinite(m.mean) ? m.mean : 0;
-      const sd = (Number.isFinite(m.sd) && m.sd > 0) ? m.sd : 1;
+      if (!Number.isFinite(m.mean) || !Number.isFinite(m.sd) || !(m.sd > 0)) {
+        // No fake numbers: without a finite mean and deviation there is no μ ± 2σ band
+        svg.innerHTML = `<text x="160" y="64" text-anchor="middle" class="chart-axis">${state.lang === 'es' ? 'μ ± 2σ no está definido para estos parámetros' : 'μ ± 2σ is not defined for these parameters'}</text>`;
+        return;
+      }
+      const mu = m.mean;
+      const sd = m.sd;
       svg.innerHTML = `
         <line x1="15" y1="96" x2="305" y2="96" stroke="var(--color-border-strong)" stroke-width="1.2"/>
         <path d="M 65 96 L 65 72 C 95 45, 130 14, 160 14 C 190 14, 225 45, 255 72 L 255 96 Z" fill="var(--color-accent)" fill-opacity="0.16"/>
@@ -3731,13 +4019,6 @@
       copyToClipboardSafe(state.prob.toFixed(state.decimals), state.lang === 'es' ? '¡Probabilidad copiada!' : 'Probability copied!');
     }
 
-    function copyCurrentSummary() {
-      const d = DISTRIBUTIONS[state.distId];
-      const m = d.moments(state.params);
-      const txt = `${d.name[state.lang]} (${d.liveNotation(state.params)})\nResultado (x=${state.x}): ${state.prob.toFixed(state.decimals)}\nMedia E[X] = ${m.mean.toFixed(4)} | Varianza = ${m.variance.toFixed(4)} | SD = ${m.sd.toFixed(4)}`;
-      copyToClipboardSafe(txt, state.lang === 'es' ? 'Resumen copiado al portapapeles' : 'Summary copied to clipboard');
-    }
-
     function copyLatexSummary() {
       const d = DISTRIBUTIONS[state.distId];
       const tex = `% ${d.name[state.lang]} (${d.notation})\n\\[\n  ${d.latex.pmfTex}\n\\]\n\\[\n  ${d.latex.meanTex}, \\quad ${d.latex.varTex}, \\quad ${d.latex.sdTex}\n\\]`;
@@ -3769,6 +4050,10 @@
       setFormulaFormat('latex');
       setExplicitTheme('light');
       setLanguage('es');
+      state.crit = { alpha: 0.05, tail: 'two', shade: false };
+      document.getElementById('critAlpha').value = '0.05';
+      showFieldError('alpha', '');
+      state.queryMode = 'eq';
       selectDistribution('binomial', true);
       showToast(state.lang === 'es' ? 'Valores por defecto restaurados' : 'Defaults restored');
     }
