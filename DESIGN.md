@@ -130,6 +130,9 @@ Fondo `surface`, borde `border`, radio `lg`, `shadow-sm`, padding `space-4`/`spa
 - Cada gráfica tiene `role="img"` con un `aria-label` que resume la forma y la selección, y una **tabla de valores** desplegable ("Ver valores de la gráfica").
 - Las barras también se pueden elegir con el teclado (flechas ← → sobre la gráfica).
 
+### Valores críticos
+Tarjeta bajo la consulta, solo en distribuciones continuas: campo α, control segmentado (izquierda, derecha, dos colas), dos paneles con los valores críticos y un panel con las áreas de cola de x. La región de rechazo se marca en la gráfica con **rayas diagonales en `color-text`** (no con rojo, que es solo para errores, ni con ámbar, que es la selección).
+
 ### Navegación
 Celular: barra inferior de 4 pestañas (ícono + texto, 56 px de alto), activa en `primary` con indicador `primary-soft`, `aria-current="page"`. Escritorio: las mismas pestañas en el encabezado. Configuración se abre con el engranaje y se cierra con el botón atrás o **Esc**.
 

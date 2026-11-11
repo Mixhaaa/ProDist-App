@@ -703,7 +703,7 @@
               <span class="eyebrow" id="calcModelKind">Modelo discreto</span>
               <div class="row">
                 <button class="btn btn-secondary btn-sm" id="btnToggleCDF" onclick="toggleChartFunction()" aria-pressed="false">Ver CDF</button>
-                <button class="btn-icon" onclick="copyCurrentSummary()" aria-label="Copiar resumen del cálculo" id="btnShareSummary">
+                <button class="btn-icon" onclick="shareCalculation()" aria-label="Compartir este cálculo" id="btnShareSummary">
                   <svg class="icon" aria-hidden="true"><use href="#i-share"/></svg>
                 </button>
               </div>
@@ -818,6 +818,37 @@
                 </div>
               </div>
               <p class="field-error" id="err_inv" role="alert" hidden></p>
+            </div>
+          </section>
+
+          <section class="card" id="critCard" aria-labelledby="critTitle" hidden>
+            <h2 class="card-title" id="critTitle">Valores críticos</h2>
+            <p class="card-sub" id="critSub">Para pruebas de hipótesis e intervalos de confianza.</p>
+            <div class="field">
+              <div class="query-row">
+                <div class="query-label">
+                  <label for="critAlpha"><span class="x-sym">α</span> <span id="critAlphaLbl">Nivel de significancia</span></label>
+                  <span class="field-hint" id="critAlphaHint">Entre 0 y 1 (ej. 0.05)</span>
+                </div>
+                <div class="stepper-group">
+                  <input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="num-input" id="critAlpha" value="0.05" aria-describedby="critAlphaHint err_alpha" oninput="onCritAlphaTyped()" />
+                </div>
+              </div>
+              <p class="field-error" id="err_alpha" role="alert" hidden></p>
+            </div>
+            <div class="segmented" role="group" aria-labelledby="critTitle">
+              <button class="seg-mode-btn" id="crit-left" onclick="setCritTail('left')" aria-pressed="false">Izquierda</button>
+              <button class="seg-mode-btn" id="crit-right" onclick="setCritTail('right')" aria-pressed="false">Derecha</button>
+              <button class="seg-mode-btn active" id="crit-two" onclick="setCritTail('two')" aria-pressed="true">Dos colas</button>
+            </div>
+            <div class="tails-grid" id="critResults" aria-live="polite"></div>
+            <div class="panel" id="critPValue"></div>
+            <div class="switch-row">
+              <div class="switch-text">
+                <span class="switch-title" id="critShadeTitle">Sombrear en la gráfica</span>
+                <span class="field-hint" id="critShadeDesc">Marca la región de rechazo con rayas.</span>
+              </div>
+              <button class="toggle-switch" id="switchCrit" role="switch" aria-checked="false" aria-labelledby="critShadeTitle" onclick="toggleCritShade()"></button>
             </div>
           </section>
         </div>
@@ -2560,7 +2591,9 @@
       formulaContrast: true,
       formulaFormat: 'latex', // 'latex' or 'ascii'
       catalogFilter: 'all',
-      fieldErrors: {}
+      fieldErrors: {},
+      crit: { alpha: 0.05, tail: 'two', shade: false },
+      ready: false
     };
 
     // Saved user preferences (theme, language, decimals...) so they survive restarts
@@ -2635,6 +2668,9 @@
       renderCatalogCards();
       updateLanguageStrings();
       applySavedPrefs();
+      restoreCalculation();
+      state.ready = true;
+      saveCalculation();
       initKeyboard();
       window.onKatexReady = () => renderFormulasScreen(DISTRIBUTIONS[state.distId]);
       if (window.katex) window.onKatexReady();
@@ -2810,6 +2846,10 @@
       fmtAsciiTitle: ['Texto para copiar (ASCII)', 'Text to copy (ASCII)'], fmtAsciiDesc: ['Sintaxis lista para Python, R o Excel.', 'Syntax ready for Python, R or Excel.'],
       setAboutTitle: ['Acerca de', 'About'], setAboutBody: ['Inspirado en los applets de distribuciones de Matthew Bognar (University of Iowa).', 'Inspired by Matthew Bognar\'s distribution applets (University of Iowa).'],
       setExportBtn: ['Exportar cálculo (CSV)', 'Export calculation (CSV)'], setResetBtn: ['Restablecer valores por defecto', 'Restore defaults'],
+      critTitle: ['Valores críticos', 'Critical values'], critSub: ['Para pruebas de hipótesis e intervalos de confianza.', 'For hypothesis tests and confidence intervals.'],
+      critAlphaLbl: ['Nivel de significancia', 'Significance level'], critAlphaHint: ['Entre 0 y 1 (ej. 0.05)', 'Between 0 and 1 (e.g. 0.05)'],
+      'crit-left': ['Izquierda', 'Left'], 'crit-right': ['Derecha', 'Right'], 'crit-two': ['Dos colas', 'Two tails'],
+      critShadeTitle: ['Sombrear en la gráfica', 'Shade on the chart'], critShadeDesc: ['Marca la región de rechazo con rayas.', 'Marks the rejection region with stripes.'],
       resBlockedText: ['Corrige los datos marcados en rojo para ver el resultado.', 'Fix the fields marked in red to see the result.']
     };
 
@@ -2826,7 +2866,7 @@
       document.querySelector('.tabs').setAttribute('aria-label', isEs ? 'Secciones' : 'Sections');
       document.getElementById('btnOpenSettings').setAttribute('aria-label', isEs ? 'Configuración' : 'Settings');
       document.getElementById('btnBackHeader').setAttribute('aria-label', isEs ? 'Volver' : 'Back');
-      document.getElementById('btnShareSummary').setAttribute('aria-label', isEs ? 'Copiar resumen del cálculo' : 'Copy calculation summary');
+      document.getElementById('btnShareSummary').setAttribute('aria-label', isEs ? 'Compartir este cálculo' : 'Share this calculation');
       document.getElementById('setDecimalsPreview').textContent = `${isEs ? 'Ejemplo' : 'Example'}: ${(0.123456789).toFixed(state.decimals)}`;
       updateQueryModeUI();
     }
@@ -2944,7 +2984,7 @@
 
     function showFieldError(key, msg) {
       const el = document.getElementById(`err_${key}`);
-      const input = document.getElementById(key === 'x' ? 'inputTargetX' : key === 'b' ? 'inputTargetB' : key === 'inv' ? 'inputInverseProb' : `pnum_${key}`);
+      const input = document.getElementById(key === 'x' ? 'inputTargetX' : key === 'b' ? 'inputTargetB' : key === 'inv' ? 'inputInverseProb' : key === 'alpha' ? 'critAlpha' : `pnum_${key}`);
       if (el) {
         el.hidden = !msg;
         el.innerHTML = msg ? `${ALERT_ICON}<span>${msg}</span>` : '';
@@ -2959,7 +2999,7 @@
 
     // Shows "fix the marked data" instead of a stale result. Returns true when blocked.
     function renderBlockedState() {
-      const blocking = Object.keys(state.fieldErrors || {}).filter(k => k !== 'inv');
+      const blocking = Object.keys(state.fieldErrors || {}).filter(k => k !== 'inv' && k !== 'alpha');
       const blocked = blocking.length > 0;
       const card = document.getElementById('resBlockedMsg');
       if (card) card.closest('section').classList.toggle('is-blocked', blocked);
@@ -3160,7 +3200,7 @@
           : `The probability must be between 0 and 1, exclusive (e.g. 0.95)${rawP ? `. You typed ${rawP}` : ''}.`);
         return;
       }
-      if (Object.keys(state.fieldErrors || {}).some(k => k !== 'inv')) return;
+      if (Object.keys(state.fieldErrors || {}).some(k => k !== 'inv' && k !== 'alpha')) return;
       showFieldError('inv', '');
       const d = DISTRIBUTIONS[state.distId];
       const p = state.params;
@@ -3190,6 +3230,158 @@
       document.getElementById('inputTargetX').value = state.x;
       recalculateAll();
       showToast(state.lang === 'es' ? `Percentil calculado: x = ${state.x}` : `Computed quantile: x = ${state.x}`);
+    }
+
+    // =========================================================================
+    // CRITICAL VALUES (continuous distributions): quantiles for a significance
+    // level α, plus the tail areas (p-values) of the current x.
+    // =========================================================================
+    function criticalValues(d, p) {
+      if (d.type !== 'continuous' || !d.inv) return null;
+      const a = state.crit.alpha;
+      if (!(a > 0 && a < 1)) return null;
+      if (state.crit.tail === 'left') return { lower: d.inv(a, p) };
+      if (state.crit.tail === 'right') return { upper: d.inv(1 - a, p) };
+      return { lower: d.inv(a / 2, p), upper: d.inv(1 - a / 2, p) };
+    }
+
+    function critSummaryText(d, p) {
+      const cv = state.crit.shade ? criticalValues(d, p) : null;
+      if (!cv) return '';
+      const isEs = state.lang === 'es';
+      const vals = [cv.lower, cv.upper].filter(v => v !== undefined).map(v => v.toFixed(state.decimals)).join(isEs ? ' y ' : ' and ');
+      return isEs ? ` Región de rechazo rayada, valores críticos ${vals}.` : ` Rejection region hatched, critical values ${vals}.`;
+    }
+
+    function renderCritical(d, p) {
+      const card = document.getElementById('critCard');
+      const applies = d.type === 'continuous' && !!d.inv;
+      card.hidden = !applies;
+      if (!applies) return;
+      const isEs = state.lang === 'es';
+      const dec = state.decimals;
+      const a = state.crit.alpha;
+      ['left', 'right', 'two'].forEach(t => {
+        const btn = document.getElementById(`crit-${t}`);
+        btn.classList.toggle('active', state.crit.tail === t);
+        btn.setAttribute('aria-pressed', String(state.crit.tail === t));
+      });
+      document.getElementById('switchCrit').setAttribute('aria-checked', String(state.crit.shade));
+      const cv = criticalValues(d, p);
+      const box = (label, value, sub) => `<div class="tail-box"><span class="label-sm">${label}</span><span class="tail-val">${value}</span><span class="label-sm">${sub}</span></div>`;
+      const fmtA = (v) => String(Number(v.toPrecision(6)));
+      const fmtC = (v) => v.toFixed(dec).replace('-', '−');
+      let html = '';
+      if (cv) {
+        if (cv.lower !== undefined) html += box(isEs ? 'Crítico inferior' : 'Lower critical', fmtC(cv.lower), `P(X ≤ x) = ${fmtA(state.crit.tail === 'two' ? a / 2 : a)}`);
+        if (cv.upper !== undefined) html += box(isEs ? 'Crítico superior' : 'Upper critical', fmtC(cv.upper), `P(X ≥ x) = ${fmtA(state.crit.tail === 'two' ? a / 2 : a)}`);
+      }
+      document.getElementById('critResults').innerHTML = html;
+
+      // Tail areas of the current x (what a p-value is for an observed statistic)
+      const F = d.cdf(state.x, p);
+      const left = F, right = Math.max(0, 1 - F), two = Math.min(1, 2 * Math.min(left, right));
+      document.getElementById('critPValue').innerHTML = `
+        <strong>${isEs ? `Áreas de cola para x = ${state.x}` : `Tail areas for x = ${state.x}`}</strong>
+        <span class="label-sm num">${isEs ? 'Izquierda' : 'Left'} P(X ≤ x) = ${left.toFixed(dec)} · ${isEs ? 'Derecha' : 'Right'} P(X ≥ x) = ${right.toFixed(dec)}</span>
+        <span class="label-sm num">${isEs ? 'Dos colas' : 'Two tails'} 2·min = ${two.toFixed(dec)}</span>`;
+    }
+
+    function onCritAlphaTyped() {
+      const raw = document.getElementById('critAlpha').value.trim();
+      const parsed = parseTyped(raw);
+      const isEs = state.lang === 'es';
+      if (parsed.empty || parsed.bad || !(parsed.value > 0 && parsed.value < 1)) {
+        showFieldError('alpha', isEs
+          ? `α debe estar entre 0 y 1, sin incluirlos (por ejemplo 0.05)${raw ? `. Escribiste ${raw}` : ''}.`
+          : `α must be between 0 and 1, exclusive (e.g. 0.05)${raw ? `. You typed ${raw}` : ''}.`);
+        state.crit.alpha = NaN;
+      } else {
+        showFieldError('alpha', '');
+        state.crit.alpha = parsed.value;
+      }
+      recalculateAll();
+    }
+
+    function setCritTail(tail) {
+      state.crit.tail = tail;
+      recalculateAll();
+    }
+
+    function toggleCritShade() {
+      state.crit.shade = !state.crit.shade;
+      recalculateAll();
+    }
+
+    // =========================================================================
+    // REMEMBER & SHARE: the current calculation is saved on the device and
+    // mirrored in the address (?d=normal&mu=0&sigma=1&x=1.96&m=le) so a link
+    // reopens exactly the same exercise.
+    // =========================================================================
+    const CALC_KEY = 'probdist-calc-v1';
+    const PUBLIC_URL = 'https://mixhaaa.github.io/ProDist-App/';
+    const onWeb = () => location.protocol.startsWith('http') && !window.Capacitor;
+
+    function calcQuery() {
+      const q = new URLSearchParams();
+      q.set('d', state.distId);
+      Object.entries(state.params).forEach(([k, v]) => q.set(k, v));
+      q.set('x', state.x);
+      if (state.queryMode === 'interval') q.set('xb', state.b);
+      q.set('m', state.queryMode);
+      return q.toString();
+    }
+
+    function saveCalculation() {
+      if (!state.ready) return;
+      try {
+        localStorage.setItem(CALC_KEY, JSON.stringify({ q: calcQuery(), crit: state.crit }));
+        if (onWeb()) history.replaceState(null, '', `${location.pathname}?${calcQuery()}`);
+      } catch (e) { /* storage or history unavailable: nothing is remembered */ }
+    }
+
+    // Reopens the calculation from the link, or else the last one used on this device.
+    // Values go through the same validation as typed input.
+    function restoreCalculation() {
+      let query = location.search.replace(/^\?/, '');
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(CALC_KEY)); } catch (e) { saved = null; }
+      if (!new URLSearchParams(query).get('d') && saved && typeof saved.q === 'string') query = saved.q;
+      const q = new URLSearchParams(query);
+      const d = DISTRIBUTIONS[q.get('d')];
+      if (saved && saved.crit && ['left', 'right', 'two'].includes(saved.crit.tail) && saved.crit.alpha > 0 && saved.crit.alpha < 1) {
+        state.crit = { alpha: saved.crit.alpha, tail: saved.crit.tail, shade: !!saved.crit.shade };
+        document.getElementById('critAlpha').value = String(saved.crit.alpha);
+      }
+      if (!d) return;
+      selectDistribution(d.id, true);
+      const mode = q.get('m');
+      if (['eq', 'le', 'ge', 'interval'].includes(mode)) state.queryMode = mode;
+      updateQueryModeUI();
+      d.params.forEach(pm => { if (q.get(pm.key) !== null) document.getElementById(`pnum_${pm.key}`).value = q.get(pm.key); });
+      if (q.get('x') !== null) document.getElementById('inputTargetX').value = q.get('x');
+      if (q.get('xb') !== null) document.getElementById('inputTargetB').value = q.get('xb');
+      validateParams();
+      onUserTypedX();
+    }
+
+    function summaryText() {
+      const d = DISTRIBUTIONS[state.distId];
+      const m = d.moments(state.params);
+      const isEs = state.lang === 'es';
+      const fx = (v) => Number.isNaN(v) ? (isEs ? 'no definida' : 'undefined') : (Number.isFinite(v) ? v.toFixed(state.decimals) : '∞');
+      return `${d.name[state.lang]} (${d.liveNotation(state.params)})\n${document.getElementById('resHeroLabel').textContent} = ${state.prob.toFixed(state.decimals)}\n${isEs ? 'Media' : 'Mean'} = ${fx(m.mean)} | ${isEs ? 'Varianza' : 'Variance'} = ${fx(m.variance)} | σ = ${fx(m.sd)}`;
+    }
+
+    function shareCalculation() {
+      const isEs = state.lang === 'es';
+      const url = `${onWeb() ? location.origin + location.pathname : PUBLIC_URL}?${calcQuery()}`;
+      const text = summaryText();
+      if (navigator.share) {
+        navigator.share({ title: 'ProbDist', text, url }).catch(() => { /* cancelled */ });
+      } else {
+        copyToClipboardSafe(`${text}\n${url}`, isEs ? 'Resumen y enlace copiados' : 'Summary and link copied');
+      }
     }
 
     function toggleStepAccordion() {
@@ -3305,6 +3497,12 @@
       }[state.queryMode];
       document.getElementById('calcRegionBadge').textContent = `${shortQuery} = ${mainProb.toFixed(dec)}`;
       document.getElementById('chartQuickMoments').textContent = `μ = ${Number.isFinite(m.mean) ? m.mean.toFixed(2) : '∞'}, σ = ${Number.isFinite(m.sd) ? m.sd.toFixed(2) : '∞'}`;
+
+      renderCritical(d, p);
+      saveCalculation();
+      document.getElementById('chartTouchHint').textContent = d.type === 'discrete'
+        ? (isEs ? 'Toca una barra para elegir x' : 'Tap a bar to choose x')
+        : (isEs ? 'Mueve x con − / + o con ← →' : 'Move x with − / + or ← →');
 
       // Step-by-Step Accordion & Didactic Tip
       renderStepByStepDevelopment(d, p, m, x, b, mainProb);
@@ -3709,6 +3907,20 @@
             out += `<path d="M ${toX(subPts[0].x).toFixed(1)},${baseY} ${subPath} L ${toX(subPts[subPts.length - 1].x).toFixed(1)},${baseY} Z" fill="${C.sel}" fill-opacity="0.30"/>`;
           }
         }
+        const cv = (!isCDF && state.crit.shade) ? criticalValues(d, p) : null;
+        if (cv) {
+          out += `<defs><pattern id="critHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="var(--color-text)" stroke-width="2"/></pattern></defs>`;
+          const region = (lo, hi) => {
+            const sub = pts.filter(pt => pt.x >= lo && pt.x <= hi);
+            if (sub.length < 2) return '';
+            return `<path d="M ${toX(sub[0].x).toFixed(1)},${baseY} ${sub.map(pt => `L ${toX(pt.x).toFixed(1)},${toY(pt.y).toFixed(1)}`).join(' ')} L ${toX(sub[sub.length - 1].x).toFixed(1)},${baseY} Z" fill="url(#critHatch)" fill-opacity="0.8"/>`;
+          };
+          const mark = (c) => (c >= minX && c <= maxX)
+            ? `<line x1="${toX(c).toFixed(1)}" y1="${padT - 6}" x2="${toX(c).toFixed(1)}" y2="${baseY}" stroke="var(--color-text)" stroke-width="1.5"/>`
+            : '';
+          if (cv.lower !== undefined) out += region(minX, cv.lower) + mark(cv.lower);
+          if (cv.upper !== undefined) out += region(cv.upper, maxX) + mark(cv.upper);
+        }
         out += `<path d="${fullPath}" fill="none" stroke="${C.line}" stroke-width="2.2" stroke-linecap="round"/>`;
 
         if (state.x >= minX && state.x <= maxX) {
@@ -3737,8 +3949,8 @@
         ? (isEs ? ` Máximo ${peak.v.toFixed(3)} en x = ${d.type === 'discrete' ? peak.x : peak.x.toFixed(2)}.` : ` Peak ${peak.v.toFixed(3)} at x = ${d.type === 'discrete' ? peak.x : peak.x.toFixed(2)}.`)
         : '';
       document.getElementById('chartSummary').textContent = isEs
-        ? `Gráfica ${kind} de ${d.liveNotation(p)}, x de ${rLo} a ${rHi}.${peakTxt} Valor seleccionado x = ${state.x}. Usa las flechas izquierda y derecha para cambiar x.`
-        : `${kind} chart of ${d.liveNotation(p)}, x from ${rLo} to ${rHi}.${peakTxt} Selected x = ${state.x}. Use the left and right arrow keys to change x.`;
+        ? `Gráfica ${kind} de ${d.liveNotation(p)}, x de ${rLo} a ${rHi}.${peakTxt} Valor seleccionado x = ${state.x}.${critSummaryText(d, p)} Usa las flechas izquierda y derecha para cambiar x.`
+        : `${kind} chart of ${d.liveNotation(p)}, x from ${rLo} to ${rHi}.${peakTxt} Selected x = ${state.x}.${critSummaryText(d, p)} Use the left and right arrow keys to change x.`;
       const fLabel = d.type === 'discrete' ? 'P(X = x)' : 'f(x)';
       document.getElementById('chartDataTable').innerHTML = `
         <caption class="sr-only">${isEs ? 'Valores de la gráfica' : 'Chart values'}</caption>
@@ -3807,14 +4019,6 @@
       copyToClipboardSafe(state.prob.toFixed(state.decimals), state.lang === 'es' ? '¡Probabilidad copiada!' : 'Probability copied!');
     }
 
-    function copyCurrentSummary() {
-      const d = DISTRIBUTIONS[state.distId];
-      const m = d.moments(state.params);
-      const fx = (v) => Number.isNaN(v) ? 'no definida' : (Number.isFinite(v) ? v.toFixed(state.decimals) : '∞');
-      const txt = `${d.name[state.lang]} (${d.liveNotation(state.params)})\nResultado (x=${state.x}): ${state.prob.toFixed(state.decimals)}\nMedia E[X] = ${fx(m.mean)} | Varianza = ${fx(m.variance)} | SD = ${fx(m.sd)}`;
-      copyToClipboardSafe(txt, state.lang === 'es' ? 'Resumen copiado al portapapeles' : 'Summary copied to clipboard');
-    }
-
     function copyLatexSummary() {
       const d = DISTRIBUTIONS[state.distId];
       const tex = `% ${d.name[state.lang]} (${d.notation})\n\\[\n  ${d.latex.pmfTex}\n\\]\n\\[\n  ${d.latex.meanTex}, \\quad ${d.latex.varTex}, \\quad ${d.latex.sdTex}\n\\]`;
@@ -3846,6 +4050,10 @@
       setFormulaFormat('latex');
       setExplicitTheme('light');
       setLanguage('es');
+      state.crit = { alpha: 0.05, tail: 'two', shade: false };
+      document.getElementById('critAlpha').value = '0.05';
+      showFieldError('alpha', '');
+      state.queryMode = 'eq';
       selectDistribution('binomial', true);
       showToast(state.lang === 'es' ? 'Valores por defecto restaurados' : 'Defaults restored');
     }
